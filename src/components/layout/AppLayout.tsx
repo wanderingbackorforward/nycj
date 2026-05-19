@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import '../../styles/cockpit.css';
 
 const NAV_ITEMS = [
   { path: '/command-overview', label: '指挥总览', icon: '◈' },
-  { path: '/area1-monitoring', label: '1工区基坑监测', icon: '◆' },
+  { path: '/area1-monitoring',  label: '1工区基坑监测', icon: '◆' },
   { path: '/area1-point-analysis', label: '1工区单点分析', icon: '◇' },
-  { path: '/area2-overview', label: '2工区盾构总览', icon: '●' },
-  { path: '/area2-tunneling', label: '2工区掘进参数', icon: '○' },
+  { path: '/area2-overview',    label: '2工区盾构总览', icon: '●' },
+  { path: '/area2-tunneling',   label: '2工区掘进参数', icon: '○' },
   { path: '/area2-slurry-grouting', label: '2工区泥水注浆', icon: '◎' },
-  { path: '/area2-monitoring', label: '2工区监测响应', icon: '◉' },
-  { path: '/documents-evidence', label: '报告与图纸证据', icon: '▣' },
-  { path: '/system-status', label: '系统状态', icon: '⚙' },
+  { path: '/area2-monitoring',  label: '2工区监测响应', icon: '◉' },
+  { path: '/documents-evidence', label: '报告与图纸', icon: '▣' },
+  { path: '/system-status',     label: '系统状态', icon: '⚙' },
 ];
 
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error: Error | null}> {
-  constructor(props: {children: React.ReactNode}) {
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -25,13 +27,17 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   render() {
     if (this.state.hasError) {
       return (
-        <div className="state-container error" style={{ padding: 40 }}>
-          <div className="state-icon">⚠</div>
-          <p className="state-message">页面渲染异常</p>
-          <pre style={{ color: '#d47070', fontSize: 12, maxWidth: 600, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: '#0a0e1a', padding: 12, borderRadius: 4, marginTop: 8 }}>
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <span className="text-3xl">⚠</span>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>页面渲染异常</p>
+          <pre className="text-xs max-w-xl whitespace-pre-wrap break-all rounded p-3 mt-2" style={{ color: '#d47070', background: 'var(--color-bg-deep)' }}>
             {this.state.error?.message}
           </pre>
-          <button className="state-retry-btn" onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 12 }}>
+          <button
+            className="px-5 py-2 rounded text-sm cursor-pointer transition-colors mt-2"
+            style={{ background: 'var(--color-accent-muted)', border: '1px solid var(--color-accent-muted)', color: 'var(--color-text-secondary)' }}
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
             重试
           </button>
         </div>
@@ -45,42 +51,71 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="cockpit-layout">
-      <aside className={'cockpit-sidebar' + (collapsed ? ' collapsed' : '')}>
-        <div className="sidebar-header">
-          <span className="sidebar-logo">NY</span>
-          {!collapsed && <span className="sidebar-title">宁扬城际</span>}
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'var(--color-bg-deep)' }}>
+      {/* Sidebar */}
+      <aside
+        className="flex flex-col overflow-hidden transition-all duration-200 border-r"
+        style={{
+          width: collapsed ? 56 : 220,
+          minWidth: collapsed ? 56 : 220,
+          background: 'var(--color-bg-deep)',
+          borderColor: 'var(--color-panel-border)',
+        }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 px-3.5 py-4 border-b min-h-[56px]" style={{ borderColor: 'var(--color-panel-border)' }}>
+          <span className="w-8 h-8 rounded flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{ background: 'linear-gradient(135deg, var(--color-accent-dim), var(--color-accent))' }}>
+            NY
+          </span>
+          {!collapsed && <span className="text-[15px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-primary)' }}>宁扬城际</span>}
         </div>
-        <nav className="sidebar-nav">
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-2">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+              className={({ isActive }) =>
+                'flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] transition-all duration-150 whitespace-nowrap border-l-[3px] ' +
+                (isActive ? 'border-l-[var(--color-accent)]' : 'border-l-transparent')
+              }
+              style={({ isActive }) => ({
+                color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                background: isActive ? 'var(--color-bg-hover)' : 'transparent',
+              })}
               title={item.label}
             >
-              <span className="nav-icon">{item.icon}</span>
-              {!collapsed && <span className="nav-label">{item.label}</span>}
+              <span className="text-sm w-5 text-center flex-shrink-0">{item.icon}</span>
+              {!collapsed && <span>{item.label}</span>}
             </NavLink>
           ))}
         </nav>
+
+        {/* Toggle */}
         <button
-          className="sidebar-toggle"
+          className="p-3 bg-transparent border-0 cursor-pointer text-xs transition-colors border-t"
+          style={{ color: 'var(--color-text-dim)', borderColor: 'var(--color-panel-border)' }}
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? '展开菜单' : '收起菜单'}
         >
           {collapsed ? '▶' : '◀'}
         </button>
       </aside>
-      <main className="cockpit-main">
-        <header className="cockpit-header">
-          <h1 className="header-title">宁扬城际施工监测与盾构研判平台</h1>
-          <div className="header-status">
-            <span className="status-dot live" />
-            <span className="status-text">系统运行中</span>
+
+      {/* Main */}
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Header */}
+        <header className="px-6 py-2.5 border-b flex items-center justify-between min-h-[48px]" style={{ background: 'var(--color-bg-deep)', borderColor: 'var(--color-panel-border)' }}>
+          <h1 className="text-base font-semibold tracking-wide" style={{ color: 'var(--color-text-primary)' }}>宁扬城际施工监测与盾构研判平台</h1>
+          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-success)' }}>
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--color-success)', boxShadow: '0 0 6px rgba(46,125,50,0.5)' }} />
+            系统运行中
           </div>
         </header>
-        <div className="cockpit-content">
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>

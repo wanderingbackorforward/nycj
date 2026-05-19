@@ -1,63 +1,91 @@
-﻿*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@import "tailwindcss";
+
+/* ===== 宁扬城际数字驾驶舱 · 设计系统 ===== */
+
+@theme {
+  /* 工程深色面板 */
+  --color-panel: #0f1525;
+  --color-panel-border: #1a2640;
+  --color-panel-hover: #111e30;
+
+  /* 主色系 */
+  --color-accent: #00d4ff;        /* 青色：强调 / 选中 / 链接 */
+  --color-accent-dim: #0d47a1;    /* 深青：渐变起点 */
+  --color-accent-muted: #1a4a6a;  /* 青边框 */
+
+  /* 语义色 */
+  --color-danger: #e65100;        /* 红色：超限 / 报警 */
+  --color-danger-bg: #2a0a0a;
+  --color-danger-border: #5a1a1a;
+  --color-warning: #d4a050;       /* 琥珀：预警 / 待确认 */
+  --color-warning-bg: #1a1210;
+  --color-warning-border: #5a3a1a;
+  --color-success: #2e7d32;       /* 绿色：正常 */
+  --color-success-bg: #101a10;
+  --color-success-border: #2a5a2a;
+
+  /* 文字层级 */
+  --color-text-primary: #c8d6e5;
+  --color-text-secondary: #98aec9;
+  --color-text-muted: #6a7d9e;
+  --color-text-dim: #5a6d8a;
+
+  /* 背景 */
+  --color-bg-deep: #0a0e1a;
+  --color-bg-card: #0f1525;
+  --color-bg-grid: #121e36;
+  --color-bg-hover: #111e30;
+
+  /* 字号 */
+  --font-size-xs: 0.625rem;   /* 10px */
+  --font-size-sm: 0.6875rem;  /* 11px */
+  --font-size-base: 0.75rem;  /* 12px */
+  --font-size-md: 0.8125rem;  /* 13px */
+  --font-size-lg: 0.875rem;   /* 14px */
+  --font-size-xl: 1.125rem;   /* 18px */
+  --font-size-2xl: 1.375rem;  /* 22px */
+  --font-size-3xl: 1.5rem;    /* 24px */
+
+  /* 圆角 */
+  --radius-card: 0.375rem;    /* 6px */
+  --radius-tag: 0.25rem;      /* 4px */
 }
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
+/* 全局基础 */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #0a0e1a;
-  color: #c8d6e5;
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: #4da6ff;
-  text-decoration: none;
-}
-
-a:hover {
-  color: #80c4ff;
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0f1425;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #2a3a5c;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3d5280;
-}
-
-table {
-  border-collapse: collapse;
-}
-
-th, td {
-  padding: 6px 12px;
-  text-align: left;
+  background: var(--color-bg-deep);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
 }
 
-th {
-  color: #8e9db5;
-  font-weight: 500;
-  border-bottom: 1px solid #1e2d4a;
-}
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--color-panel-border); border-radius: 3px; }
+
+/* 等宽字体 */
+.mono { font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace; }
+
+/* 页面容器 */
+.page-container { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+
+/* 卡片 */
+.card { background: var(--color-panel); border: 1px solid var(--color-panel-border); border-radius: var(--radius-card); padding: 14px; }
+.card-accent { border-left: 4px solid var(--color-accent); }
+.card-danger { border-left: 4px solid var(--color-danger); }
+.card-warning { border-left: 4px solid var(--color-warning); }
+
+/* 状态标签 */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-tag); font-size: var(--font-size-xs); font-weight: 600; }
+.badge-danger { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+.badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+
+/* 数据表 */
+.db-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-base); }
+.db-table th { padding: 6px 10px; text-align: left; color: var(--color-text-muted); font-weight: 600; border-bottom: 1px solid var(--color-panel-border); font-size: var(--font-size-sm); }
+.db-table td { padding: 5px 10px; color: var(--color-text-secondary); border-bottom: 1px solid rgba(26,38,64,0.5); }
+.db-table tr:hover td { background: var(--color-bg-hover); }
