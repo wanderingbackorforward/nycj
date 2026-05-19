@@ -47,7 +47,7 @@ export default function CommandOverview() {
   // ---- 1工区状态分布饼图 ----
   useEffect(() => {
     if (!pieRef.current || !gnOverview?.status_distribution) return;
-    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current, "dark");
+    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
     const items = gnOverview.status_distribution;
     const colors: Record<string, string> = { normal: "#2e7d32", exceed_design_limit: "#e65100", unknown: "#7a6a2a", review: "#1565c0" };
     pieInst.current.setOption({
@@ -69,7 +69,7 @@ export default function CommandOverview() {
   // ---- 2工区参数分组横向柱状图 ----
   useEffect(() => {
     if (!barRef.current || !a2Overview?.parameterSummary) return;
-    if (!barInst.current) barInst.current = echarts.init(barRef.current, "dark");
+    if (!barInst.current) barInst.current = echarts.init(barRef.current);
     const groups = a2Overview.parameterSummary;
     barInst.current.setOption({
       backgroundColor: "transparent",
@@ -91,7 +91,7 @@ export default function CommandOverview() {
   // ---- 两工区数据完整度雷达图 ----
   useEffect(() => {
     if (!radarRef.current) return;
-    if (!radarInst.current) radarInst.current = echarts.init(radarRef.current, "dark");
+    if (!radarInst.current) radarInst.current = echarts.init(radarRef.current);
 
     // Compute completeness from data
     const gnCards = gnOverview?.cards || [];
@@ -156,7 +156,7 @@ export default function CommandOverview() {
     if (!hasMapping) allGaps.push({ name: "环号-里程映射", value: 1, area: "2工区", desc: "无法关联监测点空间位置" });
 
     if (allGaps.length === 0) return;
-    if (!gapInst.current) gapInst.current = echarts.init(gapRef.current, "dark");
+    if (!gapInst.current) gapInst.current = echarts.init(gapRef.current);
 
     gapInst.current.setOption({
       backgroundColor: "transparent",

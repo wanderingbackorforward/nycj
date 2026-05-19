@@ -46,7 +46,7 @@ export default function DocumentsEvidence() {
   // ---- 文档类型饼图 ----
   useEffect(() => {
     if (!pieRef.current || a2Docs.length === 0) return;
-    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current, "dark");
+    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
     const catCounts: Record<string, number> = {};
     for (const d of a2Docs) { const cat = d.document_category || "other"; catCounts[cat] = (catCounts[cat] || 0) + 1; }
     pieInst.current.setOption({
@@ -63,7 +63,7 @@ export default function DocumentsEvidence() {
   // ---- 证据覆盖率仪表盘 ----
   useEffect(() => {
     if (!gaugeRef.current || a2Docs.length === 0) return;
-    if (!gaugeInst.current) gaugeInst.current = echarts.init(gaugeRef.current, "dark");
+    if (!gaugeInst.current) gaugeInst.current = echarts.init(gaugeRef.current);
     const cadCount = (cats["cad_drawing"] || []).length;
     const total = a2Docs.length;
     const pct = Math.round((cadCount / Math.max(total, 1)) * 100);
@@ -88,7 +88,7 @@ export default function DocumentsEvidence() {
   // ---- 文档时间线散点图 ----
   useEffect(() => {
     if (!tlRef.current || a2Docs.length === 0) return;
-    if (!tlInst.current) tlInst.current = echarts.init(tlRef.current, "dark");
+    if (!tlInst.current) tlInst.current = echarts.init(tlRef.current);
 
     const catList = Object.keys(cats);
     const dates = a2Docs.map(d => String(d.report_date || "")).filter(Boolean).sort();

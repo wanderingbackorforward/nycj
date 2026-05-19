@@ -1,5 +1,24 @@
 import { AREA2_API_BASE } from '../config/api';
-import { apiGetStable, apiGet, ApiResult } from './http';
+import { apiGetStable, apiGet, ApiResult, normalizeArrayResponse } from './http';
+
+// 归一化数组响应的通用获取函数（自动解包 value/data 包装）
+async function apiGetNormalized<T>(url: string, fallback: T | null = null): Promise<ApiResult<T>> {
+  try {
+    const r = await apiGet<unknown>(url);
+    if (r.ok && r.data) {
+      const arr = normalizeArrayResponse<T>(r.data);
+      if (Array.isArray(arr)) {
+        return { ok: true, data: arr as unknown as T };
+      }
+      return r as ApiResult<T>;
+    }
+    if (fallback !== null) return { ok: true, data: fallback, error: r.error };
+    return r as ApiResult<T>;
+  } catch {
+    if (fallback !== null) return { ok: true, data: fallback };
+    return { ok: false, error: '接口连接异常' };
+  }
+}
 
 // ===== 基础类型 =====
 export type Area2Health = { ok?: boolean; database?: string; schema?: string; project?: string; tables?: Record<string,number>; views?: Record<string,boolean> };
@@ -9,12 +28,12 @@ export interface Area2Overview {
   generatedAt?: string; projectName?: string; workArea?: string; date?: string;
   overallLevel?: string; overallLevelCn?: string; headline?: string;
   position?: { currentRing?: number; ringRange?: number[]; chainage?: string; mileage?: string; positionSource?: string; dataGap?: string };
-  cards?: Array<{ name: string; value: number; unit: string }>;
+  cards?: Array<{ title: string; value: string; subtitle: string; level: string }>;
   parameterSummary?: Array<{ group_code: string; group_cn: string; sample_count: number; ring_count: number; time_range?: string; exceed_count?: number; normal_count?: number }>;
   monitoringSummary?: Array<{ item: string; readings: number; points: number; normal_cnt?: number; warning_cnt?: number; alarm_cnt?: number }>;
-  findings?: Array<Record<string,unknown>>;
+  findings?: Array<{ message?: string; description?: string; title?: string; detail?: string; level?: string; level_cn?: string; source?: string }>;
   actions?: Array<{ priority: string; priority_cn: string; description: string }>;
-  dataGaps?: Array<{ field: string; reason: string; impact: string }>;
+  dataGaps?: Array<{ field?: string; category?: string; reason?: string; detail?: string; impact?: string; status?: string; action?: string }>;
 }
 
 // ===== Rings =====
@@ -58,7 +77,7 @@ export interface Area2SystemStatus {
   databaseConnected?: boolean; schema?: string; projectName?: string;
   tableCounts?: Record<string,number>; viewStatus?: Record<string,boolean>;
   alertStatus?: { monitoring?: { normal?:number; warning?:number; alarm?:number; unknown?:number }; tunneling?: { normal?:number; exceed?:number } };
-  gapStatus?: Array<{ category:string; status:string; detail:string; action:string }>;
+  gapStatus?: Record<string, { status:string; detail:string; action?:string }>;
   knownIssues?: string[]; nextActions?: string[];
 }
 
@@ -73,8 +92,8 @@ export interface Area2ThresholdsResponse { data?: Area2Threshold[]; total?: numb
 
 // ===== Analytics =====
 export interface Area2AnalyticsOverview {
-  monitoring?: { total_readings:number; normal:number; warning:number; alarm:number; exceed_design_limit:number; by_item?:Array<Record<string,unknown>>; by_ring?:Array<Record<string,unknown>> };
-  tunneling?: { total_params:number; normal:number; exceed:number; by_group?:Array<Record<string,unknown>>; by_ring?:Array<Record<string,unknown>> };
+  monitoring?: { total_readings:number; normal:number; warning:number; alarm:number; exceed_design_limit:number; by_item?:Array<{item:string; readings:number; normal:number; warning:number; alarm:number}>; by_ring?:Array<{ring_no:number; normal:number; warning:number; alarm:number}> };
+  tunneling?: { total_params:number; normal:number; exceed:number; by_group?:Array<{group:string; normal:number; exceed:number}>; by_ring?:Array<{ring_no:number; normal:number; exceed:number}> };
 }
 
 // ===== Ring Mileage Config =====
@@ -86,6 +105,17 @@ export interface Area2RingMileageConfig {
 
 // ===== Posture Deviation =====
 export interface Area2PostureDeviationConfig {
+  configured?: boolean;
+  configs?: Array<{
+    type_code?: string;
+    deviation_name?: string;
+    deviation_name_cn?: string;
+    configured?: boolean;
+    design_limit_mm?: number;
+    design_limit_deg?: number;
+    stat_p95?: number;
+    unit?: string;
+  }>;
   types?: Array<{ type_code:string; type_cn:string; design_limit?:number; warning_limit?:number; p05?:number; p95?:number; unit:string }>;
   status?: string;
 }
@@ -110,21 +140,21 @@ export function fetchArea2Overview(): Promise<ApiResult<Area2Overview> & { stabl
 export function fetchArea2SystemStatus(): Promise<ApiResult<Area2SystemStatus>> { return apiGet(AREA2_API_BASE + '/system-status'); }
 export function fetchArea2Rings(): Promise<ApiResult<Area2Ring[]>> { return apiGet(AREA2_API_BASE + '/rings'); }
 export function fetchArea2Ring(ringNo:number): Promise<ApiResult<Area2Ring>> { return apiGet(AREA2_API_BASE + '/rings/' + ringNo); }
-export async function fetchArea2TunnelingParams(params?:string): Promise<ApiResult<Area2TunnelingParameter[]>> { const qs = params ? '?' + params : ''; const r = await apiGet<unknown>(AREA2_API_BASE + '/tunneling/parameters' + qs); if (r.ok && r.data) { const d = r.data as Record<string,unknown>; r.data = (Array.isArray(d.data) ? d.data : d) as Area2TunnelingParameter[]; } return r as ApiResult<Area2TunnelingParameter[]>; }
-export async function fetchArea2TunnelingGroups(): Promise<ApiResult<Area2TunnelingGroup[]>> { const r = await apiGet<unknown>(AREA2_API_BASE + '/tunneling/groups'); if (r.ok && r.data) { const d = r.data as Record<string,unknown>; r.data = (Array.isArray(d.value) ? d.value : d) as Area2TunnelingGroup[]; } return r as ApiResult<Area2TunnelingGroup[]>; }
-export async function fetchArea2MonitoringItems(): Promise<ApiResult<Area2MonitoringItem[]>> { const r = await apiGet<unknown>(AREA2_API_BASE + '/monitoring/items'); if (r.ok && r.data) { const d = r.data as Record<string,unknown>; r.data = (Array.isArray(d.value) ? d.value : d) as Area2MonitoringItem[]; } return r as ApiResult<Area2MonitoringItem[]>; }
-export async function fetchArea2MonitoringReadings(params?:string): Promise<ApiResult<Area2MonitoringReading[]>> { const qs = params ? '?' + params : ''; const r = await apiGet<unknown>(AREA2_API_BASE + '/monitoring/readings' + qs); if (r.ok && r.data) { const d = r.data as Record<string,unknown>; r.data = (Array.isArray(d.value) ? d.value : Array.isArray(d.data) ? d.data : d) as Area2MonitoringReading[]; } return r as ApiResult<Area2MonitoringReading[]>; }
+export async function fetchArea2TunnelingParams(params?:string): Promise<ApiResult<Area2TunnelingParameter[]>> { const qs = params ? '?' + params : ''; return apiGetNormalized<Area2TunnelingParameter[]>(AREA2_API_BASE + '/tunneling/parameters' + qs); }
+export async function fetchArea2TunnelingGroups(): Promise<ApiResult<Area2TunnelingGroup[]>> { return apiGetNormalized<Area2TunnelingGroup[]>(AREA2_API_BASE + '/tunneling/groups'); }
+export async function fetchArea2MonitoringItems(): Promise<ApiResult<Area2MonitoringItem[]>> { return apiGetNormalized<Area2MonitoringItem[]>(AREA2_API_BASE + '/monitoring/items'); }
+export async function fetchArea2MonitoringReadings(params?:string): Promise<ApiResult<Area2MonitoringReading[]>> { const qs = params ? '?' + params : ''; return apiGetNormalized<Area2MonitoringReading[]>(AREA2_API_BASE + '/monitoring/readings' + qs); }
 export function fetchArea2MonitoringSummary(): Promise<ApiResult<Area2MonitoringSummary>> { return apiGet(AREA2_API_BASE + '/monitoring/summary'); }
-export async function fetchArea2Documents(): Promise<ApiResult<Area2Document[]>> { const r = await apiGet<unknown>(AREA2_API_BASE + '/documents'); if (r.ok && r.data) { const d = r.data as Record<string,unknown>; r.data = (Array.isArray(d.value) ? d.value : d) as Area2Document[]; } return r as ApiResult<Area2Document[]>; }
-export function fetchArea2Evidence(): Promise<ApiResult<unknown[]>> { return apiGet(AREA2_API_BASE + '/evidence'); }
+export async function fetchArea2Documents(): Promise<ApiResult<Area2Document[]>> { return apiGetNormalized<Area2Document[]>(AREA2_API_BASE + '/documents'); }
+export async function fetchArea2Evidence(): Promise<ApiResult<unknown[]>> { return apiGetNormalized<unknown[]>(AREA2_API_BASE + '/evidence'); }
 export function fetchArea2DataQuality(): Promise<ApiResult<Area2DataQuality>> { return apiGet(AREA2_API_BASE + '/data-quality/summary'); }
 
 // ===== Diagnosis (existing) =====
-export function fetchArea2DiagnosisOperation(): Promise<ApiResult<Record<string,unknown>>> { return apiGet(AREA2_API_BASE + '/diagnosis/operation'); }
-export function fetchArea2DiagnosisSlurryGrouting(ringNo?:number): Promise<ApiResult<Record<string,unknown>>> { const qs = ringNo ? '?ring_no=' + ringNo : ''; return apiGet(AREA2_API_BASE + '/diagnosis/slurry-grouting' + qs); }
+export function fetchArea2DiagnosisOperation(ringNo?: number | null): Promise<ApiResult<Area2DiagnosisSlurryGrouting>> { const qs = ringNo != null ? '?ring_no=' + ringNo : ''; return apiGet(AREA2_API_BASE + '/diagnosis/operation' + qs); }
+export function fetchArea2DiagnosisSlurryGrouting(ringNo?: number | null): Promise<ApiResult<Area2DiagnosisSlurryGrouting>> { const qs = ringNo != null ? '?ring_no=' + ringNo : ''; return apiGet(AREA2_API_BASE + '/diagnosis/slurry-grouting' + qs); }
 
 // ===== NEW API: Thresholds =====
-export function fetchArea2Thresholds(targetType?:string): Promise<ApiResult<Area2ThresholdsResponse>> { const qs = targetType ? '?target_type=' + targetType : ''; return apiGet(AREA2_API_BASE + '/thresholds' + qs); }
+export async function fetchArea2Thresholds(targetType?:string): Promise<ApiResult<Area2ThresholdsResponse>> { const qs = targetType ? '?target_type=' + targetType : ''; const r = await apiGet<unknown>(AREA2_API_BASE + '/thresholds' + qs); if (r.ok && r.data) { const d = r.data as Record<string,unknown>; if (d.data) { r.data = d as unknown as Area2ThresholdsResponse; } } return r as ApiResult<Area2ThresholdsResponse>; }
 
 // ===== NEW API: Analytics =====
 export function fetchArea2AnalyticsOverview(): Promise<ApiResult<Area2AnalyticsOverview>> { return apiGet(AREA2_API_BASE + '/analytics/overview'); }
@@ -139,11 +169,22 @@ export function updateArea2RingMileage(data:{start_ring:number; start_mileage:st
 export function fetchArea2PostureDeviation(): Promise<ApiResult<Area2PostureDeviationConfig>> { return apiGet(AREA2_API_BASE + '/config/posture-deviation'); }
 
 // ===== NEW API: Risk Sources =====
-export function fetchArea2RiskSources(): Promise<ApiResult<Area2RiskSource[]>> { return apiGet(AREA2_API_BASE + '/risk-sources'); }
-export function fetchArea2RiskSourcesNearby(ringNo:number): Promise<ApiResult<Area2RiskSource[]>> { return apiGet(AREA2_API_BASE + '/risk-sources/nearby?ring_no=' + ringNo); }
+export async function fetchArea2RiskSources(): Promise<ApiResult<Area2RiskSource[]>> { return apiGetNormalized<Area2RiskSource[]>(AREA2_API_BASE + '/risk-sources'); }
+export async function fetchArea2RiskSourcesNearby(ringNo:number): Promise<ApiResult<Area2RiskSource[]>> { return apiGetNormalized<Area2RiskSource[]>(AREA2_API_BASE + '/risk-sources/nearby?ring_no=' + ringNo); }
 
 // ===== Legacy type aliases (keep pages compiling) =====
-export type Area2DiagnosisSlurryGrouting = Record<string,unknown>;
+export interface Area2DiagnosisSlurryGrouting { ring_no?: number; timestamp?: string; slurry_params?: Array<{ name?: string; parameter_name_cn?: string; value?: number; unit?: string }>; grouting_params?: Array<{ name?: string; parameter_name_cn?: string; value?: number; unit?: string }>; monitoring_response?: Record<string, unknown>; data_gaps?: Array<{ field?: string; category?: string; reason?: string; detail?: string }>; suggestion?: string; findings?: Array<{ level: string; detail: string }>; conclusion?: string; [key: string]: unknown }
+
+
+// ===== Coordinates (v1.5) =====
+export interface Area2Coordinate {
+  point_id?: string; x_init?: number; y_init?: number;
+  x_current?: number; y_current?: number;
+  change_mm?: number; cumulative_mm?: number;
+  instrument?: string; measured_at?: string;
+}
+export async function fetchArea2Coordinates(): Promise<ApiResult<Area2Coordinate[]>> { return apiGetNormalized<Area2Coordinate[]>(AREA2_API_BASE + '/coordinates'); }
+
 
 // ===== Document type =====
 export interface Area2Document { file_name?:string; document_category?:string; document_type?:string; report_date?:string; ring_no?:number; upload_date?:string; file_size?:number; registration_status?:string }

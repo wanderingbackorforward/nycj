@@ -1,4 +1,4 @@
-﻿import { API_TIMEOUT_MS } from '../config/api';
+import { API_TIMEOUT_MS } from '../config/api';
 
 export interface ApiResult<T> {
   ok: boolean;
@@ -61,6 +61,16 @@ export async function apiGetStable<T>(url: string): Promise<ApiResult<T> & { sta
     return { ok: true, data: cached, error: result.error, stable: true };
   }
   return { ...result, stable: false };
+}
+
+
+// 统一数组响应解包：后端可能返回 { value: [...] } 或 { data: [...] } 或直接数组
+export function normalizeArrayResponse<T>(raw: unknown): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  const d = raw as Record<string, unknown>;
+  if (Array.isArray(d.value)) return d.value as T[];
+  if (Array.isArray(d.data)) return d.data as T[];
+  return raw as T[];
 }
 
 export function clearStableCache(): void {

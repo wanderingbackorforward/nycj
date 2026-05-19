@@ -3,9 +3,9 @@ import * as echarts from "echarts";
 import LoadingState from "../components/status/LoadingState";
 import ErrorState from "../components/status/ErrorState";
 import { fetchGnHealth, fetchGnSystemStatus, fetchGnDataGaps, fetchGnDataQualityTyped, fetchGnThresholds, fetchGnManualReviews, fetchGnSensorPatterns, fetchGnPointsNeedingCoords } from "../api/area1";
-import { fetchArea2Health, fetchArea2SystemStatus } from "../api/area2";
+import { fetchArea2Health, fetchArea2SystemStatus, fetchArea2Coordinates } from "../api/area2";
 import type { GnHealth, GnSystemStatus, GnDataGapsResponse, GnDataQualityResponse, GnThresholdsResponse, GnManualReviewResponse, GnSensorPatternsResponse, GnPointsNeedingCoordsResponse } from "../api/area1";
-import type { Area2Health, Area2SystemStatus } from "../api/area2";
+import type { Area2Health, Area2SystemStatus, Area2Coordinate } from "../api/area2";
 
 export default function SystemStatus() {
   const barRef = useRef<HTMLDivElement>(null);
@@ -29,13 +29,14 @@ export default function SystemStatus() {
   const [gnCoordsNeeded, setGnCoordsNeeded] = useState<GnPointsNeedingCoordsResponse | null>(null);
   const [gnReviews, setGnReviews] = useState<GnManualReviewResponse | null>(null);
   const [a2Sys, setA2Sys] = useState<Area2SystemStatus | null>(null);
+  const [a2Coords, setA2Coords] = useState<Area2Coordinate[]>([]);
   const [refreshedAt, setRefreshedAt] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     const results = await Promise.all([
       fetchGnHealth(), fetchGnSystemStatus(), fetchGnDataGaps(), fetchGnDataQualityTyped(),
-      fetchArea2Health(), fetchArea2SystemStatus(), fetchGnThresholds(), fetchGnManualReviews(), fetchGnSensorPatterns(), fetchGnPointsNeedingCoords(),
+      fetchArea2Health(), fetchArea2SystemStatus(), fetchArea2Coordinates(), fetchGnThresholds(), fetchGnManualReviews(), fetchGnSensorPatterns(), fetchGnPointsNeedingCoords(),
     ]);
     if (results[0].ok) setGnHealth(results[0].data!);
     if (results[1].ok) setGnSys(results[1].data!);
@@ -43,9 +44,10 @@ export default function SystemStatus() {
     if (results[3].ok) setGnQuality(results[3].data!);
     if (results[4].ok) setA2Health(results[4].data!);
     if (results[5].ok) setA2Sys(results[5].data!);
-    if (results[6].ok) setGnThresholds(results[6].data!);
-    if (results[7].ok) setGnReviews(results[7].data!);
-    if (results[8].ok) setGnSensorPatterns(results[8].data!);
+    if (results[6].ok && results[6].data) setA2Coords(results[6].data);
+    if (results[7].ok) setGnThresholds(results[7].data!);
+    if (results[8].ok) setGnReviews(results[8].data!);
+    if (results[9].ok) setGnSensorPatterns(results[9].data!);
     if (results[9].ok) setGnCoordsNeeded(results[9].data!);
     if (results.slice(0,2).every(r => !r.ok) && results.slice(4,6).every(r => !r.ok)) setError("所有后端接口连接异常");
     setRefreshedAt(new Date().toLocaleTimeString("zh-CN"));
@@ -61,7 +63,7 @@ export default function SystemStatus() {
     const a2Tables = (a2Sys as Record<string,unknown>)?.db_rows as Record<string,number> || {};
     const allKeys = [...new Set([...Object.keys(gnTables), ...Object.keys(a2Tables)])].slice(0, 8);
     if (allKeys.length === 0) return;
-    if (!barInst.current) barInst.current = echarts.init(barRef.current, "dark");
+    if (!barInst.current) barInst.current = echarts.init(barRef.current);
     barInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
@@ -82,7 +84,7 @@ export default function SystemStatus() {
   // ---- 1工区 unknown原因分布柱状图 ----
   useEffect(() => {
     if (!unknownBarRef.current || !gnQuality?.unknown_reason_distribution) return;
-    if (!unknownBarInst.current) unknownBarInst.current = echarts.init(unknownBarRef.current, "dark");
+    if (!unknownBarInst.current) unknownBarInst.current = echarts.init(unknownBarRef.current);
     const reasons = gnQuality.unknown_reason_distribution;
     unknownBarInst.current.setOption({
       backgroundColor: "transparent",
@@ -104,7 +106,7 @@ export default function SystemStatus() {
   // ---- 健康度仪表盘1 ----
   useEffect(() => {
     if (!gauge1Ref.current) return;
-    if (!gauge1Inst.current) gauge1Inst.current = echarts.init(gauge1Ref.current, "dark");
+    if (!gauge1Inst.current) gauge1Inst.current = echarts.init(gauge1Ref.current);
     const ok = gnHealth?.ok === true && gnHealth?.database === "connected" && gnSys?.database_connected === true;
     gauge1Inst.current.setOption({
       backgroundColor: "transparent",
@@ -118,7 +120,7 @@ export default function SystemStatus() {
   // ---- 健康度仪表盘2 ----
   useEffect(() => {
     if (!gauge2Ref.current) return;
-    if (!gauge2Inst.current) gauge2Inst.current = echarts.init(gauge2Ref.current, "dark");
+    if (!gauge2Inst.current) gauge2Inst.current = echarts.init(gauge2Ref.current);
     const ok = (a2Health as Record<string,unknown>)?.ok === true;
     gauge2Inst.current.setOption({
       backgroundColor: "transparent",
@@ -443,6 +445,51 @@ export default function SystemStatus() {
                 <div style={{fontSize:10, color:"#5a6d8a"}}>{item.detail}</div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* 2工区数据缺口状态 */}
+      {a2Sys?.gapStatus && (
+        <section style={{marginBottom:16, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+          <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:8}}>2工区数据缺口状态</h3>
+          <div style={{display:"flex", flexDirection:"column", gap:6}}>
+            {Object.entries(a2Sys.gapStatus).map(([key, val]) => {
+              const statusColor = val.status === "resolved" ? "#2e7d32" : val.status === "infrastructure_ready" ? "#d4a050" : "#e65100";
+              return (
+                <div key={key} style={{display:"flex", alignItems:"center", gap:12, padding:"6px 0", borderBottom:"1px solid #1a2845"}}>
+                  <span style={{width:8, height:8, borderRadius:"50%", background:statusColor, flexShrink:0}} />
+                  <span style={{fontSize:11, color:"#8a9bb5", minWidth:160}}>{key.replace("G1_", "① ").replace("G2_", "② ").replace("G3_", "③ ").replace("G4_", "④ ").replace("G5_", "⑤ ").replace("G6_", "⑥ ")}</span>
+                  <span style={{fontSize:11, color:"#5a6d8a", flex:1}}>{val.detail}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 2工区监测坐标（CGCS2000） */}
+      {a2Coords && a2Coords.length > 0 && (
+        <section style={{marginBottom:16, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+          <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:8}}>2工区监测坐标（CGCS2000）</h3>
+          <div style={{overflowX:"auto"}}>
+            <table className="db-table" style={{width:"100%", fontSize:11}}>
+              <thead><tr><th>点号</th><th>X初始</th><th>Y初始</th><th>X当前</th><th>Y当前</th><th>变化(mm)</th><th>累计(mm)</th><th>仪器</th></tr></thead>
+              <tbody>
+                {a2Coords.map((coord, i) => (
+                  <tr key={i}>
+                    <td className="mono">{coord.point_id || "-"}</td>
+                    <td className="mono">{coord.x_init?.toFixed(3) || "-"}</td>
+                    <td className="mono">{coord.y_init?.toFixed(3) || "-"}</td>
+                    <td className="mono">{coord.x_current?.toFixed(3) || "-"}</td>
+                    <td className="mono">{coord.y_current?.toFixed(3) || "-"}</td>
+                    <td className="mono" style={{color: Math.abs(coord.change_mm||0) > 5 ? "#e65100" : "#c8d6e5"}}>{coord.change_mm?.toFixed(1) || "-"}</td>
+                    <td className="mono" style={{color: Math.abs(coord.cumulative_mm||0) > 10 ? "#e65100" : "#c8d6e5"}}>{coord.cumulative_mm?.toFixed(1) || "-"}</td>
+                    <td style={{fontSize:10, color:"#5a6d8a"}}>{coord.instrument || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}

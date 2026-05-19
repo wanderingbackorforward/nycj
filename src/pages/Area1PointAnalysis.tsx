@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import * as echarts from "echarts";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useECharts } from "../components/charts/useECharts";
 import LoadingState from "../components/status/LoadingState";
 import ErrorState from "../components/status/ErrorState";
 import { fetchGnMonitoringPoints, fetchGnPointAnalysis, fetchGnDiagnose } from "../api/area1";
@@ -49,10 +49,10 @@ export default function Area1PointAnalysis() {
   useEffect(() => { if (selectedPoint) loadPoint(selectedPoint); }, [selectedPoint, loadPoint]);
 
   // ---- Trend chart: uses point-analysis trend (now rich for all points) ----
-  useEffect(() => {
-    if (!trendRef.current) return;
+    // ---- Trend chart ----
+  const trendOption = useMemo(() => {
     const trend = analysis?.trend;
-    if (!trend || trend.length === 0) return;
+    if (!trend || trend.length === 0) return null;
 
     const dates: string[] = [];
     const currentVals: (number | null)[] = [];
@@ -64,22 +64,22 @@ export default function Area1PointAnalysis() {
       cumulativeVals.push(typeof t.cumulative_change === "number" ? t.cumulative_change : null);
     }
 
-    if (!trendInst.current) trendInst.current = echarts.init(trendRef.current, "dark");
     const designLimit = analysis.point.design_limit as number | undefined;
 
-    const series: echarts.SeriesOption[] = [
+    const series: any[] = [
       { name: "当前值", type: "line", yAxisIndex: 0, data: currentVals, smooth: false, symbol: "circle", symbolSize: 6, lineStyle: { width: 2.5, color: "#00d4ff" }, itemStyle: { color: "#00d4ff" } },
       { name: "累计变化", type: "line", yAxisIndex: 1, data: cumulativeVals, smooth: false, symbol: "diamond", symbolSize: 6, lineStyle: { width: 2, color: "#ff8c42", type: "dashed" }, itemStyle: { color: "#ff8c42" } },
     ];
+
+
     if (typeof designLimit === "number") {
       series.push({
         name: "设计限值", type: "line", yAxisIndex: 0, data: Array(currentVals.length).fill(designLimit) as number[],
         lineStyle: { type: "dotted", width: 2, color: "#e65100" }, itemStyle: { color: "#e65100" }, symbol: "none",
-        markLine: { silent: true, symbol: "none", lineStyle: { color: "#e65100", type: "dashed" }, label: { formatter: "限值 " + designLimit, color: "#e65100", fontSize: 10 }, data: [{ yAxis: designLimit }] },
+        markLine: { silent: true, symbol: "none", lineStyle: { color: "#e65100", type: "dashed" }, label: { formatter: "限值" + designLimit, color: "#e65100", fontSize: 10 }, data: [{ yAxis: designLimit }] },
       });
     }
-
-    trendInst.current.setOption({
+    return {
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       legend: { top: 8, textStyle: { color: "#7a8ba8", fontSize: 11 } },
@@ -90,13 +90,10 @@ export default function Area1PointAnalysis() {
         { type: "value", name: "累计变化", nameTextStyle: { color: "#ff8c42", fontSize: 11 }, axisLabel: { color: "#ff8c42", fontSize: 10 }, splitLine: { show: false } },
       ],
       series,
-    }, true);
-    const h = () => trendInst.current?.resize();
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
+    };
   }, [analysis]);
 
-  useEffect(() => { return () => { trendInst.current?.dispose(); }; }, []);
+  useECharts(trendRef, trendOption, (analysis?.trend?.length || 0) > 0);
 
   if (loading) return <LoadingState message="正在加载监测点列表..." />;
   if (error && points.length === 0) return <ErrorState message={error} onRetry={loadPoints} />;

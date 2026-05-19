@@ -2,180 +2,195 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import LoadingState from "../components/status/LoadingState";
 import ErrorState from "../components/status/ErrorState";
-import { fetchArea2DiagnosisSlurryGrouting, fetchArea2TunnelingParams, fetchArea2MonitoringSummary, fetchArea2Rings } from "../api/area2";
-import type { Area2DiagnosisSlurryGrouting, Area2TunnelingParameter, Area2MonitoringSummary, Area2Ring } from "../api/area2";
+import {
+  fetchArea2DiagnosisSlurryGrouting, fetchArea2TunnelingParams,
+  fetchArea2MonitoringSummary,
+} from "../api/area2";
+import type { Area2DiagnosisSlurryGrouting, Area2MonitoringSummary } from "../api/area2";
 
 export default function Area2SlurryGrouting() {
   const chartRef = useRef<HTMLDivElement>(null);
-  const chartInstance = useRef<echarts.ECharts | null>(null);
+  const chartInst = useRef<echarts.ECharts | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rings, setRings] = useState<Area2Ring[]>([]);
-  const [selectedRing, setSelectedRing] = useState<number | null>(null);
   const [diagnosis, setDiagnosis] = useState<Area2DiagnosisSlurryGrouting | null>(null);
-  const [slurryParams, setSlurryParams] = useState<Area2TunnelingParameter[]>([]);
-  const [groutParams, setGroutParams] = useState<Area2TunnelingParameter[]>([]);
   const [monSummary, setMonSummary] = useState<Area2MonitoringSummary | null>(null);
-  const [diagLoading, setDiagLoading] = useState(false);
+  const [selectedRing, setSelectedRing] = useState<number | null>(null);
 
-  const loadMeta = useCallback(async () => {
-    setLoading(true);
-    const [ringRes, monRes] = await Promise.all([fetchArea2Rings(), fetchArea2MonitoringSummary()]);
-    if (ringRes.ok && ringRes.data) {
-      setRings(ringRes.data);
-      const last = ringRes.data[ringRes.data.length - 1]?.ring_no;
-      if (typeof last === "number") setSelectedRing(last);
-    }
-    if (monRes.ok) setMonSummary(monRes.data!);
-    if (!ringRes.ok && !monRes.ok) setError("接口连接异常");
+  const load = useCallback(async (ringNo?: number) => {
+    setLoading(true); setError(null);
+    try {
+      const [diagRes, monRes] = await Promise.all([
+        fetchArea2DiagnosisSlurryGrouting(ringNo ?? null),
+        fetchArea2MonitoringSummary(),
+      ]);
+      if (diagRes.ok && diagRes.data) {
+        setDiagnosis(diagRes.data);
+        setSelectedRing(diagRes.data.ring_no ?? null);
+      } else if (!diagRes.ok) setError(diagRes.error ?? "诊断接口连接异常");
+      if (monRes.ok && monRes.data) setMonSummary(monRes.data);
+    } catch { setError("接口连接异常"); }
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadMeta(); }, [loadMeta]);
+  useEffect(() => { load(); }, [load]);
 
-  const loadDiagnosis = useCallback(async (ringNo: number | null) => {
-    if (ringNo == null) return;
-    setDiagLoading(true); setDiagnosis(null);
-    const [diagRes, slurRes, groutRes] = await Promise.all([
-      fetchArea2DiagnosisSlurryGrouting(ringNo),
-      fetchArea2TunnelingParams("group=slurry"),
-      fetchArea2TunnelingParams("group=grouting"),
-    ]);
-    if (diagRes.ok) setDiagnosis(diagRes.data!);
-    if (slurRes.ok && slurRes.data) setSlurryParams(slurRes.data);
-    if (groutRes.ok && groutRes.data) setGroutParams(groutRes.data);
-    setDiagLoading(false);
-  }, []);
-
-  useEffect(() => { if (selectedRing != null) loadDiagnosis(selectedRing); }, [selectedRing, loadDiagnosis]);
-
-  // ---- 横向柱状图：土压/泥水 + 注浆参数 ----
+  // Simple bar chart for slurry pressure distribution
   useEffect(() => {
-    if (!chartRef.current || !diagnosis) return;
-    if (!chartInstance.current) chartInstance.current = echarts.init(chartRef.current, "dark");
-
-    const raw = diagnosis as Record<string,unknown>;
-    const slurry = (raw.slurry_params || raw.slurry_parameters) as Array<Record<string,unknown>> || [];
-    const grouting = (raw.grouting_params || raw.grouting_parameters) as Array<Record<string,unknown>> || [];
-    const allParams = [...slurry, ...grouting];
-    if (allParams.length === 0) return;
-
-    const seen = new Set<string>();
-    const unique: Array<{name: string; value: number; unit: string; isSlurry: boolean}> = [];
-    for (const p of allParams) {
-      const n = String(p.name || "");
-      if (!seen.has(n) && typeof p.value === "number") {
-        seen.add(n);
-        unique.push({ name: n, value: p.value, unit: String(p.unit || ""), isSlurry: true });
+    if (!chartRef.current || !diagnosis?.slurry_params?.length) return;
+    try {
+      if (!chartInst.current) chartInst.current = echarts.init(chartRef.current);
+      // Aggregate by parameter name, show average
+      const map = new Map<string, number[]>();
+      for (const p of diagnosis.slurry_params) {
+        const name = String((p as Record<string,unknown>).name || p.parameter_name_cn || "");
+        if (!name) continue;
+        if (!map.has(name)) map.set(name, []);
+        map.get(name)!.push(Number(p.value) || 0);
       }
-      if (unique.length >= 15) break;
-    }
-    const slurryCount = slurry.length;
-    for (let i = 0; i < unique.length; i++) {
-      unique[i].isSlurry = i < Math.min(slurryCount, unique.length);
-    }
-
-    chartInstance.current.setOption({
-      backgroundColor: "transparent",
-      tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      grid: { left: 160, right: 60, top: 10, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 11 }, splitLine: { lineStyle: { color: "#121e36" } } },
-      yAxis: { type: "category", data: unique.map(p => p.name + (p.unit ? " (" + p.unit + ")" : "")), axisLabel: { color: "#8a9bb5", fontSize: 10, width: 140, overflow: "truncate" }, axisLine: { lineStyle: { color: "#1a2845" } } },
-      series: [{
-        type: "bar",
-        data: unique.map(p => ({ value: p.value, itemStyle: { color: p.isSlurry ? "#00d4ff" : "#ff8c42" } })),
-        barWidth: 16, itemStyle: { borderRadius: [0, 3, 3, 0] },
-        label: { show: true, position: "right", color: "#5a6d8a", fontSize: 10, formatter: "{c}" },
-      }],
-    }, true);
-    const h = () => chartInstance.current?.resize();
+      const items = Array.from(map.entries()).map(([name, vals]) => ({
+        name: name.length > 10 ? name.substring(0, 10) : name,
+        avg: vals.reduce((a, b) => a + b, 0) / vals.length,
+        min: Math.min(...vals), max: Math.max(...vals),
+      }));
+      chartInst.current.setOption({
+        backgroundColor: "transparent",
+        tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
+        grid: { left: 50, right: 20, top: 10, bottom: 60 },
+        xAxis: { type: "category", data: items.map(i => i.name), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2845" } } },
+        yAxis: { type: "value", name: "bar", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
+        series: [
+          { name: "均值", type: "bar", data: items.map(i => +i.avg.toFixed(2)), itemStyle: { color: "#0d47a1" }, barWidth: 16 },
+          { name: "范围", type: "bar", data: items.map(i => +(i.max - i.min).toFixed(2)), itemStyle: { color: "rgba(0,212,255,0.3)" }, barGap: "-100%", z: 0 },
+        ],
+      }, true);
+    } catch { /* silent */ }
+    const h = () => { try { chartInst.current?.resize(); } catch { /* ignore */ } };
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, [diagnosis]);
 
-  useEffect(() => { return () => { chartInstance.current?.dispose(); }; }, []);
+  useEffect(() => { return () => { try { chartInst.current?.dispose(); } catch { /* ignore */ } }; }, []);
 
-  if (loading) return <LoadingState message="正在加载泥水注浆数据..." />;
-  if (error && rings.length === 0) return <ErrorState message={error} onRetry={loadMeta} />;
+  if (loading) return <LoadingState message="正在加载泥水注浆诊断数据..." />;
+  if (error && !diagnosis) return <ErrorState message={error} onRetry={() => load()} />;
 
-  const raw = diagnosis as Record<string,unknown> | null;
-  const conclusionText = String(raw?.conclusion || raw?.summary || "");
-  const actions = (raw?.actions || raw?.recommended_actions || []) as string[];
-  const gaps = (raw?.gaps || raw?.data_gaps || []) as Array<Record<string,string>>;
+  const slurryCount = diagnosis?.slurry_params?.length || 0;
+  const groutingCount = diagnosis?.grouting_params?.length || 0;
+  const monAlarm = monSummary?.alert_summary?.alarm || 0;
+  const monWarning = monSummary?.alert_summary?.warning || 0;
+  const monNormal = monSummary?.alert_summary?.normal || 0;
+  const gaps = diagnosis?.data_gaps || [];
+  const suggestion = diagnosis?.suggestion || "";
 
   return (
-    <div className="page-area2-slurry">
+    <div className="page-area2-slurry-grouting">
       <h2 className="page-title">2工区泥水注浆</h2>
-      <p className="page-desc">选择环号查看该环的土压/泥水参数与注浆参数，评估与监测响应的关联性。</p>
-      {error && <div className="page-warning-banner" style={{background:"#2a0a0a",border:"1px solid #5a1a1a",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⚠ " + error}</div>}
+      <p className="page-desc">
+        盾构区间 · 当前{selectedRing || "-"}环 · 泥水/土压参数{slurryCount.toLocaleString()}条 · 注浆参数{groutingCount.toLocaleString()}条
+      </p>
 
-      <div className="param-selector">
-        <label>选择环号：</label>
-        <select className="param-select" value={selectedRing ?? ""} onChange={e => setSelectedRing(Number(e.target.value) || null)}>
-          {rings.map(r => (<option key={r.ring_no} value={r.ring_no}>{"第" + r.ring_no + " 环"}</option>))}
-        </select>
-        {diagLoading && <span className="loading-text">加载中...</span>}
-      </div>
-
-      {/* ======== 参数柱状图 ======== */}
-      <section className="status-section">
-        <h3>{"环号 " + (raw?.ring_no || selectedRing || "-") + " — 泥水/土压与注浆参数"}</h3>
-        <div className="chart-container" ref={chartRef} style={{height:400}}>
-          {!diagnosis && !diagLoading && <div className="chart-placeholder">选择环号后显示参数</div>}
-        </div>
-        <div style={{display:"flex", gap:20, marginTop:8}}>
-          <span style={{fontSize:11, color:"#5a6d8a"}}>{"●"} <span style={{color:"#00d4ff"}}>蓝色</span> = 土压/泥水参数</span>
-          <span style={{fontSize:11, color:"#5a6d8a"}}>{"●"} <span style={{color:"#ff8c42"}}>橙色</span> = 注浆参数</span>
-        </div>
+      {/* ====== 研判结论 ====== */}
+      <section style={{ marginBottom: 16, background: "#0f1525", border: "1px solid #1a2640", borderLeft: "4px solid #d4a050", borderRadius: 6, padding: 14 }}>
+        <h3 style={{ color: "#d4a050", fontSize: 14, marginBottom: 8 }}>当前结论</h3>
+        <p style={{ color: "#98aec9", fontSize: 13, lineHeight: 1.7, marginBottom: 8 }}>
+          {slurryCount > 0 && groutingCount > 0 ? (
+            <>环{selectedRing}诊断完成：泥水/土压参数{slurryCount.toLocaleString()}条，注浆参数{groutingCount.toLocaleString()}条。</>
+          ) : "诊断数据加载中..."}
+          {monAlarm > 0 && (
+            <span style={{color:"#e65100"}}>同期监测发现<strong>{monAlarm.toLocaleString()}条报警级</strong>、{monWarning.toLocaleString()}条预警级读数。</span>
+          )}
+          {monAlarm === 0 && "同期监测未发现报警级读数。"}
+        </p>
+        <p style={{ color: "#6a7d9e", fontSize: 12, marginBottom: 0 }}>
+          注意：当前缺少完整泥水环流系统数据（仅含土压传感器读数），注浆参数来自日报汇总。阈值基于P95/P99统计推导。
+        </p>
       </section>
 
-      {/* ======== 数据量概览 ======== */}
-      <section className="status-cards-row">
-        <div className="status-cards-group"><h3 className="group-title">土压/泥水参数</h3>
-          <div style={{display:"flex", gap:24}}>
-            <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#00d4ff"}}>{slurryParams.length.toLocaleString()}</div><div style={{fontSize:11,color:"#6a7d9e"}}>条数</div></div>
-            <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#00d4ff"}}>{[...new Set(slurryParams.map(p => p.ring_no))].length}</div><div style={{fontSize:11,color:"#6a7d9e"}}>环数</div></div>
+      {/* ====== 监测响应摘要 ====== */}
+      {monSummary?.alert_summary && (
+        <section style={{ marginBottom: 16, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 12 }}>
+          <h3 style={{ color: "#6a7d9e", fontSize: 14, marginBottom: 8 }}>关键证据：同期监测响应</h3>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ background: "#1a1010", border: "1px solid #5a1a1a", borderRadius: 4, padding: "10px 16px", flex: "1 1 100px" }}>
+              <div style={{ fontSize: 11, color: "#e65100", marginBottom: 2 }}>报警级</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#e65100" }}>{monAlarm.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: "#5a1a1a" }}>P99超限</div>
+            </div>
+            <div style={{ background: "#1a1a10", border: "1px solid #5a4a2a", borderRadius: 4, padding: "10px 16px", flex: "1 1 100px" }}>
+              <div style={{ fontSize: 11, color: "#d4a050", marginBottom: 2 }}>预警级</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#d4a050" }}>{monWarning.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: "#5a4a2a" }}>P95超限</div>
+            </div>
+            <div style={{ background: "#101a10", border: "1px solid #2a5a2a", borderRadius: 4, padding: "10px 16px", flex: "1 1 100px" }}>
+              <div style={{ fontSize: 11, color: "#2e7d32", marginBottom: 2 }}>正常</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#2e7d32" }}>{monNormal.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: "#2a5a2a" }}>正常范围</div>
+            </div>
+            <div style={{ background: "#111a2e", border: "1px solid #1a2845", borderRadius: 4, padding: "10px 16px", flex: "1 1 130px" }}>
+              <div style={{ fontSize: 11, color: "#5a8aaa", marginBottom: 2 }}>阈值来源</div>
+              <div style={{ fontSize: 12, color: "#c8d6e5" }}>P95/P99统计推导</div>
+              <div style={{ fontSize: 10, color: "#6a7d9e" }}>非工程设计值</div>
+            </div>
           </div>
-        </div>
-        <div className="status-cards-group"><h3 className="group-title">注浆参数</h3>
-          <div style={{display:"flex", gap:24}}>
-            <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#ff8c42"}}>{groutParams.length.toLocaleString()}</div><div style={{fontSize:11,color:"#6a7d9e"}}>条数</div></div>
-            <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#ff8c42"}}>{[...new Set(groutParams.map(p => p.ring_no))].length}</div><div style={{fontSize:11,color:"#6a7d9e"}}>环数</div></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ======== 综合诊断（简洁2行） ======== */}
-      {conclusionText && (
-        <section style={{marginBottom:14, background:"#0f1525", border:"1px solid #1a2640", borderLeft:"3px solid #00d4ff", borderRadius:4, padding:12}}>
-          <div style={{fontSize:12, color:"#6a7d9e", marginBottom:4}}>综合诊断</div>
-          <div style={{fontSize:13, color:"#98aec9", lineHeight:1.6}}>{conclusionText}</div>
         </section>
       )}
 
-      {/* ======== 监测响应概要 ======== */}
-      <section style={{marginBottom:14}}>
-        <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:8}}>当前监测响应</h3>
-        <div className="mon-status-grid">
-          <div className="mon-status-card unknown"><span className="mon-status-label">总读数</span><span className="mon-status-value">{monSummary?.total_readings?.toLocaleString() || "-"}</span></div>
-          <div className="mon-status-card unknown"><span className="mon-status-label">待确认</span><span className="mon-status-value">{String(monSummary?.total_readings || "-")}</span></div>
-        </div>
-        <p className="mon-status-note">注意：当前缺少正式泥水环流数据（如进出泥流量、密度差）。仅展示土压传感器和注浆参数。不假装有完整环流数据。</p>
-      </section>
+      {/* ====== 土压分布图 ====== */}
+      {diagnosis?.slurry_params && diagnosis.slurry_params.length > 0 && (
+        <section style={{ marginBottom: 16, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 12 }}>
+          <h4 style={{ color: "#6a7d9e", fontSize: 13, marginBottom: 4 }}>土压/泥水参数分布（均值 + 范围）</h4>
+          <p style={{ color: "#4a5a6e", fontSize: 10, marginBottom: 4 }}>
+            共{slurryCount.toLocaleString()}条记录，深色柱=均值，浅色背景=波动范围
+          </p>
+          <div ref={chartRef} style={{ height: 280 }} />
+        </section>
+      )}
 
-      {/* ======== 数据缺口 ======== */}
-      <section>
-        <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:8}}>数据缺口</h3>
-        <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
-          {[
-            { cat: "环流数据", desc: "缺少进出泥流量、密度差", impact: "无法评估泥水平衡", action: "从盾构PLC导出" },
-            { cat: "阈值", desc: "缺少土压/注浆诊断阈值", impact: "无法自动判断异常", action: "补充设计规范限值" },
+      {/* ====== 诊断建议 ====== */}
+      {suggestion && (
+        <section style={{ marginBottom: 16, background: "#0f1525", border: "1px solid #1a4a6a", borderLeft: "4px solid #00d4ff", borderRadius: 6, padding: 14 }}>
+          <h3 style={{ color: "#00d4ff", fontSize: 14, marginBottom: 8 }}>建议动作</h3>
+          <p style={{ color: "#98aec9", fontSize: 12, lineHeight: 1.7 }}>{suggestion}</p>
+        </section>
+      )}
+
+      {!suggestion && (
+        <section style={{ marginBottom: 16, background: "#0f1525", border: "1px solid #1a4a6a", borderLeft: "4px solid #00d4ff", borderRadius: 6, padding: 14 }}>
+          <h3 style={{ color: "#00d4ff", fontSize: 14, marginBottom: 8 }}>建议动作</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {["比对土压传感器读数与设计土压设定值（当前仅展示原始读数，缺少设计参考范围）",
+              "补充泥水环流系统完整参数（进出泥流量、密度、压力），当前仅含土压传感器",
+              "结合注浆量分布与监测沉降数据，评估注浆对地层沉降的控制效果",
+            ].map((a, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ color: "#00d4ff", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
+                <span style={{ fontSize: 12, color: "#98aec9", lineHeight: 1.6 }}>{a}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ====== 数据缺口 ====== */}
+      <section style={{ marginBottom: 0, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 14 }}>
+        <h3 style={{ color: "#6a7d9e", fontSize: 14, marginBottom: 8 }}>数据缺口</h3>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {Array.isArray(gaps) && gaps.length > 0 ? (gaps as Array<Record<string, unknown>>).map((g, i) => (
+            <div key={i} style={{ flex: "1 1 200px", background: "#1a1210", border: "1px solid #5a3a1a", borderRadius: 4, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: "#d4a050", fontWeight: 600, marginBottom: 4 }}>{String((g as Record<string,unknown>).field || (g as Record<string,unknown>).category || "未知")}</div>
+              <div style={{ fontSize: 11, color: "#8a6d5a", marginBottom: 4 }}>{String((g as Record<string,unknown>).reason || (g as Record<string,unknown>).detail || "")}</div>
+            </div>
+          )) : [
+            { cat: "泥水环流", detail: "缺少进出泥流量、密度、压力等完整环流参数", action: "接入PLC泥水环流数据" },
+            { cat: "土压参考值", detail: "土压传感器读数缺少设计土压设定范围作为参考", action: "补充设计土压控制范围" },
+            { cat: "注浆-沉降关联", detail: "注浆量数据与监测沉降数据未做时空关联分析", action: "按环号对齐注浆量与对应里程沉降" },
           ].map((g, i) => (
-            <div key={i} style={{flex:"1 1 200px", background:"#1a1210", border:"1px solid #5a3a1a", borderRadius:4, padding:"10px 12px"}}>
-              <div style={{fontSize:11, color:"#d4a050", fontWeight:600, marginBottom:4}}>{g.cat}</div>
-              <div style={{fontSize:11, color:"#8a6d5a", marginBottom:2}}>{g.desc}</div>
-              <div style={{fontSize:10, color:"#5a4a2a"}}>{"→ " + g.action}</div>
+            <div key={i} style={{ flex: "1 1 200px", background: "#1a1210", border: "1px solid #5a3a1a", borderRadius: 4, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: "#d4a050", fontWeight: 600, marginBottom: 4 }}>{g.cat}</div>
+              <div style={{ fontSize: 11, color: "#8a6d5a", marginBottom: 4 }}>{g.detail}</div>
+              <div style={{ fontSize: 10, color: "#5a4a2a" }}>→ {g.action}</div>
             </div>
           ))}
         </div>

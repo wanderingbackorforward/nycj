@@ -19,6 +19,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    base: '/cockpit/',
     sourcemap: false,
   },
 });

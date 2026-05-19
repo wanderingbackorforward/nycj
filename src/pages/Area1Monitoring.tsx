@@ -42,7 +42,7 @@ export default function Area1Monitoring() {
   // ---- 监测项目堆叠柱状图 ----
   useEffect(() => {
     if (!barRef.current || items.length === 0) return;
-    if (!barInst.current) barInst.current = echarts.init(barRef.current, "dark");
+    if (!barInst.current) barInst.current = echarts.init(barRef.current);
     const top = items.slice(0, 12);
     barInst.current.setOption({
       backgroundColor: "transparent",
@@ -65,7 +65,7 @@ export default function Area1Monitoring() {
   // ---- 状态分布饼图 ----
   useEffect(() => {
     if (!pieRef.current || !overview?.status_distribution) return;
-    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current, "dark");
+    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
     const colors: Record<string, string> = { normal: "#2e7d32", exceed_design_limit: "#e65100", unknown: "#7a6a2a" };
     pieInst.current.setOption({
       backgroundColor: "transparent",
@@ -88,7 +88,7 @@ export default function Area1Monitoring() {
     if (!exceedBarRef.current) return;
     const exceedAlerts = [...alerts].filter(a => a.exceed_ratio != null).sort((a,b) => (b.exceed_ratio||0) - (a.exceed_ratio||0)).slice(0, 10);
     if (exceedAlerts.length === 0) return;
-    if (!exceedInst.current) exceedInst.current = echarts.init(exceedBarRef.current, "dark");
+    if (!exceedInst.current) exceedInst.current = echarts.init(exceedBarRef.current);
 
     exceedInst.current.setOption({
       backgroundColor: "transparent",
@@ -128,7 +128,7 @@ export default function Area1Monitoring() {
   // ---- 复核级别分布环形图 ----
   useEffect(() => {
     if (!reviewPieRef.current || alerts.length === 0) return;
-    if (!reviewInst.current) reviewInst.current = echarts.init(reviewPieRef.current, "dark");
+    if (!reviewInst.current) reviewInst.current = echarts.init(reviewPieRef.current);
     const reviewCounts: Record<string, number> = {};
     for (const a of alerts) {
       const lvl = a.review_level || "unspecified";

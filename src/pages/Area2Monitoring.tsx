@@ -32,7 +32,7 @@ export default function Area2Monitoring() {
   // ---- 监测项目读数柱状图 ----
   useEffect(() => {
     if (!barRef.current || items.length === 0) return;
-    if (!barInst.current) barInst.current = echarts.init(barRef.current, "dark");
+    if (!barInst.current) barInst.current = echarts.init(barRef.current);
     barInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
@@ -51,7 +51,7 @@ export default function Area2Monitoring() {
   // ---- 解析置信度饼图 ----
   useEffect(() => {
     if (!pieRef.current || !summary) return;
-    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current, "dark");
+    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
     const raw = summary as Record<string,unknown>;
     const conf = (raw.parse_confidence_dist || {}) as Record<string,unknown>;
     const data = Object.entries(conf).map(([k, v]) => ({
@@ -73,7 +73,7 @@ export default function Area2Monitoring() {
   // ---- 数据质量雷达图 ----
   useEffect(() => {
     if (!radarRef.current || !summary) return;
-    if (!radarInst.current) radarInst.current = echarts.init(radarRef.current, "dark");
+    if (!radarInst.current) radarInst.current = echarts.init(radarRef.current);
     const raw = summary as Record<string,unknown>;
     const confDist = (raw.parse_confidence_dist || {}) as Record<string,number>;
     const high = confDist.high || 0;
@@ -123,7 +123,7 @@ export default function Area2Monitoring() {
       {error && <div className="page-warning-banner" style={{background:"#2a0a0a",border:"1px solid #5a1a1a",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⚠ " + error}</div>}
 
       <div className="mon-status-note" style={{marginBottom:16}}>
-        <strong>监测阈值均基于P95/P99统计推导，非工程设计值。</strong>1,430条报警级读数需人工复核确认是否为真实超限。
+        <strong>监测阈值均基于P99/P95统计推导（非工程设计值）。1,430条报警级读数需人工复核。</strong>1,430条报警级读数需人工复核确认是否为真实超限。
       </div>
 
       {/* ======== Row 1: 监测项目柱状图 + 解析置信度饼图 ======== */}
