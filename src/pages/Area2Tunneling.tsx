@@ -19,11 +19,11 @@ export default function Area2Tunneling() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [grpRes, posRes] = await Promise.all([fetchArea2TunnelingGroups(), fetchArea2PostureDeviation()]);
-      if (grpRes.ok && Array.isArray(grpRes.data)) { setGroups(grpRes.data); if (grpRes.data.length > 0) setSelectedGroup(String(grpRes.data[0].group_code ?? "")); }
-      else if (!grpRes.ok) setError(grpRes.error ?? "接口连接异常");
-      if (posRes.ok && posRes.data) setPosture(posRes.data);
-    } catch { setError("接口连接异常"); }
+      const grpRes = await fetchArea2TunnelingGroups();
+      if (grpRes.ok && Array.isArray(grpRes.data) && grpRes.data.length > 0) { setGroups(grpRes.data); setSelectedGroup(String(grpRes.data[0].group_code ?? "")); }
+      else { setError(grpRes.error ?? "接口连接异常"); }
+    } catch (e) { console.error("groups:", e); setError("接口连接异常"); }
+    try { const posRes = await fetchArea2PostureDeviation(); if (posRes.ok && posRes.data) setPosture(posRes.data); } catch {}
     setLoading(false);
   }, []);
 
