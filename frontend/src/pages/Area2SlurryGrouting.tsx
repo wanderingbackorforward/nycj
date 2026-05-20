@@ -60,8 +60,8 @@ export default function Area2SlurryGrouting() {
         backgroundColor: "transparent",
         tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
         grid: { left: 50, right: 20, top: 10, bottom: 60 },
-        xAxis: { type: "category", data: items.map(i => i.name), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
-        yAxis: { type: "value", name: "bar", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
+        xAxis: { type: "category", data: items.map(i => i.name), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+        yAxis: { type: "value", name: "bar", axisLabel: { color: "#5a6d8a", fontSize:12 }, splitLine: { lineStyle: { color: "#121e36" } } },
         series: [
           { name: "均值", type: "bar", data: items.map(i => +i.avg.toFixed(2)), itemStyle: { color: "#0d47a1" }, barWidth: 16 },
           { name: "范围", type: "bar", data: items.map(i => +(i.max - i.min).toFixed(2)), itemStyle: { color: "rgba(0,212,255,0.3)" }, barGap: "-100%", z: 0 },
@@ -118,22 +118,22 @@ export default function Area2SlurryGrouting() {
             <div style={{ background: "#2a0a0a", border: "1px solid #5a1a1a", borderRadius: 4, padding: "10px 16px", flex: "1 1 100px" }}>
               <div style={{ fontSize: 11, color: "#e65100", marginBottom: 2 }}>报警级</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: "#e65100" }}>{monAlarm.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: "#5a1a1a" }}>P99超限</div>
+              <div style={{ fontSize:12, color: "#5a1a1a" }}>P99超限</div>
             </div>
             <div style={{ background: "#1a1a10", border: "1px solid #5a4a2a", borderRadius: 4, padding: "10px 16px", flex: "1 1 100px" }}>
               <div style={{ fontSize: 11, color: "#d4a050", marginBottom: 2 }}>预警级</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: "#d4a050" }}>{monWarning.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: "#5a4a2a" }}>P95超限</div>
+              <div style={{ fontSize:12, color: "#5a4a2a" }}>P95超限</div>
             </div>
             <div style={{ background: "#101a10", border: "1px solid #2a5a2a", borderRadius: 4, padding: "10px 16px", flex: "1 1 100px" }}>
               <div style={{ fontSize: 11, color: "#2e7d32", marginBottom: 2 }}>正常</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: "#2e7d32" }}>{monNormal.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: "#2a5a2a" }}>正常范围</div>
+              <div style={{ fontSize:12, color: "#2a5a2a" }}>正常范围</div>
             </div>
             <div style={{ background: "#111e30", border: "1px solid #1a2640", borderRadius: 4, padding: "10px 16px", flex: "1 1 130px" }}>
               <div style={{ fontSize: 11, color: "#5a6d8a", marginBottom: 2 }}>阈值来源</div>
               <div style={{ fontSize: 12, color: "#c8d6e5" }}>P95/P99统计推导</div>
-              <div style={{ fontSize: 10, color: "#6a7d9e" }}>非工程设计值</div>
+              <div style={{ fontSize:12, color: "#6a7d9e" }}>非工程设计值</div>
             </div>
           </div>
         </section>
@@ -143,7 +143,7 @@ export default function Area2SlurryGrouting() {
       {diagnosis?.slurry_params && diagnosis.slurry_params.length > 0 && (
         <section style={{ marginBottom: 16, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 12 }}>
           <h4 style={{ color: "#6a7d9e", fontSize: 13, marginBottom: 4 }}>土压/泥水参数分布（均值 + 范围）</h4>
-          <p style={{ color: "#5a6d8a", fontSize: 10, marginBottom: 4 }}>
+          <p style={{ color: "#5a6d8a", fontSize:12, marginBottom: 4 }}>
             共{slurryCount.toLocaleString()}条记录，深色柱=均值，浅色背景=波动范围
           </p>
           <div ref={chartRef} style={{ height: 280 }} />

@@ -67,13 +67,13 @@ export default function SystemStatus() {
     barInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { top: 0, textStyle: { color: "#98aec9", fontSize: 10 } },
+      legend: { top: 0, textStyle: { color: "#98aec9", fontSize:12 } },
       grid: { left: 120, right: 60, top: 30, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10, formatter: (v: number) => v >= 1000 ? (v/1000).toFixed(0)+"k" : String(v) }, splitLine: { lineStyle: { color: "#121e36" } } },
-      yAxis: { type: "category", data: allKeys, axisLabel: { color: "#98aec9", fontSize: 10, width: 110, overflow: "truncate" }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12, formatter: (v: number) => v >= 1000 ? (v/1000).toFixed(0)+"k" : String(v) }, splitLine: { lineStyle: { color: "#121e36" } } },
+      yAxis: { type: "category", data: allKeys, axisLabel: { color: "#98aec9", fontSize:12, width: 110, overflow: "truncate" }, axisLine: { lineStyle: { color: "#1a2640" } } },
       series: [
-        { name: "1工区", type: "bar", data: allKeys.map(k => gnTables[k] || 0), itemStyle: { color: "#00d4ff", borderRadius: [0,3,3,0] }, barWidth: 14, label: { show: true, position: "right", color: "#5a6d8a", fontSize: 10, formatter: (p: { value: number }) => p.value > 0 ? (p.value >= 1000 ? (p.value/1000).toFixed(0)+"k" : String(p.value)) : "" } },
-        { name: "2工区", type: "bar", data: allKeys.map(k => a2Tables[k] || 0), itemStyle: { color: "#e65100", borderRadius: [0,3,3,0] }, barWidth: 14, barGap: "30%", label: { show: true, position: "right", color: "#5a6d8a", fontSize: 10, formatter: (p: { value: number }) => p.value > 0 ? (p.value >= 1000 ? (p.value/1000).toFixed(0)+"k" : String(p.value)) : "" } },
+        { name: "1工区", type: "bar", data: allKeys.map(k => gnTables[k] || 0), itemStyle: { color: "#00d4ff", borderRadius: [0,3,3,0] }, barWidth: 14, label: { show: true, position: "right", color: "#5a6d8a", fontSize:12, formatter: (p: { value: number }) => p.value > 0 ? (p.value >= 1000 ? (p.value/1000).toFixed(0)+"k" : String(p.value)) : "" } },
+        { name: "2工区", type: "bar", data: allKeys.map(k => a2Tables[k] || 0), itemStyle: { color: "#e65100", borderRadius: [0,3,3,0] }, barWidth: 14, barGap: "30%", label: { show: true, position: "right", color: "#5a6d8a", fontSize:12, formatter: (p: { value: number }) => p.value > 0 ? (p.value >= 1000 ? (p.value/1000).toFixed(0)+"k" : String(p.value)) : "" } },
       ],
     }, true);
     const h = () => barInst.current?.resize();
@@ -90,12 +90,12 @@ export default function SystemStatus() {
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       grid: { left: 160, right: 60, top: 10, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10, formatter: (v: number) => v >= 1000 ? (v/1000).toFixed(0)+"k" : String(v) }, splitLine: { lineStyle: { color: "#121e36" } } },
-      yAxis: { type: "category", data: reasons.map(r => r.unknown_reason_cn || r.unknown_reason), axisLabel: { color: "#98aec9", fontSize: 10, width: 140, overflow: "truncate" }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12, formatter: (v: number) => v >= 1000 ? (v/1000).toFixed(0)+"k" : String(v) }, splitLine: { lineStyle: { color: "#121e36" } } },
+      yAxis: { type: "category", data: reasons.map(r => r.unknown_reason_cn || r.unknown_reason), axisLabel: { color: "#98aec9", fontSize:12, width: 140, overflow: "truncate" }, axisLine: { lineStyle: { color: "#1a2640" } } },
       series: [{
         type: "bar", data: reasons.map(r => r.count),
         barWidth: 16, itemStyle: { borderRadius: [0,3,3,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:"#d4a050"},{offset:1,color:"#e65100"}]) },
-        label: { show: true, position: "right", color: "#d4a050", fontSize: 10, formatter: (p: { value: number }) => p.value >= 1000 ? (p.value/1000).toFixed(1)+"k" : String(p.value) },
+        label: { show: true, position: "right", color: "#d4a050", fontSize:12, formatter: (p: { value: number }) => p.value >= 1000 ? (p.value/1000).toFixed(1)+"k" : String(p.value) },
       }],
     }, true);
     const h = () => unknownBarInst.current?.resize();
@@ -211,12 +211,12 @@ export default function SystemStatus() {
               <div key={gap.id} style={{background:"#0f1525", border:"1px solid " + (gap.priority === "P1" ? "#5a1a1a" : "#5a3a1a"), borderLeft:"4px solid " + (gap.priority === "P1" ? "#e65100" : "#d4a050"), borderRadius:4, padding:"12px 14px"}}>
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
                   <span style={{fontSize:13, fontWeight:600, color:"#c8d6e5"}}>{gap.title}</span>
-                  <span style={{fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:3, color:"#fff", background: gap.priority === "P1" ? "#e65100" : "#d4a050"}}>{gap.priority}</span>
+                  <span style={{fontSize:12, fontWeight:700, padding:"2px 8px", borderRadius:3, color:"#fff", background: gap.priority === "P1" ? "#e65100" : "#d4a050"}}>{gap.priority}</span>
                 </div>
                 <div style={{fontSize:12, color:"#98aec9", lineHeight:1.5, marginBottom:4}}>{gap.description}</div>
                 {gap.impact && <div style={{fontSize:11, color:"#d47070", marginBottom:4}}>{"影响: " + gap.impact}</div>}
                 {gap.backend_capability && <div style={{fontSize:11, color:"#5a6d8a", marginBottom:4}}>{"后端能力: " + gap.backend_capability}</div>}
-                <div style={{display:"flex", justifyContent:"space-between", fontSize:10, color:"#5a6d8a", marginTop:4, borderTop:"1px solid #1a2640", paddingTop:6}}>
+                <div style={{display:"flex", justifyContent:"space-between", fontSize:12, color:"#5a6d8a", marginTop:4, borderTop:"1px solid #1a2640", paddingTop:6}}>
                   <span>{"需对接: " + (gap.required_from || "-")}</span>
                   {gap.thresholds_configured != null && <span style={{color:"#00d4ff"}}>{"已配置阈值: " + gap.thresholds_configured}</span>}
                 </div>
@@ -245,7 +245,7 @@ export default function SystemStatus() {
                       {gnQuality.confidence_distribution.map(c => (
                         <div key={c.parse_confidence} style={{flex:1, background:"#111e30", borderRadius:3, padding:"6px 8px", textAlign:"center"}}>
                           <div style={{fontSize:16, fontWeight:700, color: c.parse_confidence === "high" ? "#4caf50" : "#e65100"}}>{c.count.toLocaleString()}</div>
-                          <div style={{fontSize:10, color:"#6a7d9e"}}>{c.parse_confidence === "high" ? "高置信度" : "中置信度"}</div>
+                          <div style={{fontSize:12, color:"#6a7d9e"}}>{c.parse_confidence === "high" ? "高置信度" : "中置信度"}</div>
                         </div>
                       ))}
                     </div>
@@ -268,7 +268,7 @@ export default function SystemStatus() {
                   <div style={{borderTop:"1px solid #1a2640", paddingTop:8}}>
                     <div style={{fontSize:11, color:"#6a7d9e", marginBottom:2}}>证据覆盖率</div>
                     <div style={{fontSize:20, fontWeight:700, color:"#4caf50"}}>{gnQuality.evidence_coverage.coverage_ratio}</div>
-                    <div style={{fontSize:10, color:"#5a6d8a"}}>{"证据 " + gnQuality.evidence_coverage.evidence_count.toLocaleString() + " 条 / 读数 " + gnQuality.evidence_coverage.reading_count.toLocaleString() + " 条"}</div>
+                    <div style={{fontSize:12, color:"#5a6d8a"}}>{"证据 " + gnQuality.evidence_coverage.evidence_count.toLocaleString() + " 条 / 读数 " + gnQuality.evidence_coverage.reading_count.toLocaleString() + " 条"}</div>
                   </div>
                 )}
               </div>
@@ -296,7 +296,7 @@ export default function SystemStatus() {
                     <td className="mono" style={{color:"#d4a050"}}>{t.warning_threshold ?? "-"}</td>
                     <td className="mono" style={{color:"#e65100"}}>{t.alarm_threshold ?? "-"}</td>
                     <td>{t.unit || "-"}</td>
-                    <td style={{fontSize:10, color:"#5a6d8a"}}>{t.threshold_source === "auto-derived-from-excel" ? "Excel自动提取" : t.threshold_source || "-"}</td>
+                    <td style={{fontSize:12, color:"#5a6d8a"}}>{t.threshold_source === "auto-derived-from-excel" ? "Excel自动提取" : t.threshold_source || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -319,7 +319,7 @@ export default function SystemStatus() {
                     <td>{r.review_verdict || "-"}</td>
                     <td>{r.reviewer || "-"}</td>
                     <td style={{fontSize:11}}>{r.notes || "-"}</td>
-                    <td style={{fontSize:10, color:"#5a6d8a"}}>{r.reviewed_at || "-"}</td>
+                    <td style={{fontSize:12, color:"#5a6d8a"}}>{r.reviewed_at || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -361,7 +361,7 @@ export default function SystemStatus() {
                     <tr key={i}>
                       <td className="mono" style={{color:"#d4a050"}}>{c.column}</td>
                       <td>{c.count}</td>
-                      <td style={{fontSize:10, color:"#5a6d8a", maxWidth:250, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{c.file}</td>
+                      <td style={{fontSize:12, color:"#5a6d8a", maxWidth:250, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{c.file}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -391,7 +391,7 @@ export default function SystemStatus() {
                   const cats: Record<string, number> = {};
                   (gnCoordsNeeded.points || []).forEach(p => { const k = p.monitoring_object || "其他"; cats[k] = (cats[k] || 0) + 1; });
                   return Object.entries(cats).sort((a,b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => (
-                    <span key={k} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:3, padding:"3px 8px", fontSize:10, color:"#98aec9"}}>{k}: {v}</span>
+                    <span key={k} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:3, padding:"3px 8px", fontSize:12, color:"#98aec9"}}>{k}: {v}</span>
                   ));
                 })()}
               </div>
@@ -442,7 +442,7 @@ export default function SystemStatus() {
               <div key={i} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:4, padding:"10px 12px"}}>
                 <div style={{fontSize:11, color:"#6a7d9e", marginBottom:4}}>{item.label}</div>
                 <div style={{fontSize:16, fontWeight:700, color:item.color, marginBottom:2}}>{item.value}</div>
-                <div style={{fontSize:10, color:"#5a6d8a"}}>{item.detail}</div>
+                <div style={{fontSize:12, color:"#5a6d8a"}}>{item.detail}</div>
               </div>
             ))}
           </div>
@@ -485,7 +485,7 @@ export default function SystemStatus() {
                     <td className="mono">{coord.y_current?.toFixed(3) || "-"}</td>
                     <td className="mono" style={{color: Math.abs(coord.change_mm||0) > 5 ? "#e65100" : "#c8d6e5"}}>{coord.change_mm?.toFixed(1) || "-"}</td>
                     <td className="mono" style={{color: Math.abs(coord.cumulative_mm||0) > 10 ? "#e65100" : "#c8d6e5"}}>{coord.cumulative_mm?.toFixed(1) || "-"}</td>
-                    <td style={{fontSize:10, color:"#5a6d8a"}}>{coord.instrument || "-"}</td>
+                    <td style={{fontSize:12, color:"#5a6d8a"}}>{coord.instrument || "-"}</td>
                   </tr>
                 ))}
               </tbody>

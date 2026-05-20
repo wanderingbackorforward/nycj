@@ -62,7 +62,7 @@ export default function DocumentsEvidence() {
       backgroundColor: "transparent",
       tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       legend: { orient: "vertical", right: 10, top: "center", textStyle: { color: "#98aec9", fontSize: 11 } },
-      series: [{ type: "pie", radius: ["45%", "70%"], center: ["38%", "50%"], data: Object.entries(catCounts).map(([cat, count]) => ({ name: DOC_CATEGORY_CN[cat] || cat, value: count })), label: { color: "#98aec9", fontSize: 10 }, itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 } }],
+      series: [{ type: "pie", radius: ["45%", "70%"], center: ["38%", "50%"], data: Object.entries(catCounts).map(([cat, count]) => ({ name: DOC_CATEGORY_CN[cat] || cat, value: count })), label: { color: "#98aec9", fontSize:12 }, itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 } }],
     }, true);
     const h = () => pieInst.current?.resize();
     window.addEventListener("resize", h);
@@ -116,7 +116,7 @@ export default function DocumentsEvidence() {
       tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 }, formatter: (p: { value: string[]; data: { docName: string } }) => p.value[0] + "<br/>" + p.value[1] + "<br/>" + p.data.docName },
       grid: { left: 140, right: 20, top: 10, bottom: 24 },
       xAxis: { type: "category", data: [...new Set(dates)], axisLabel: { color: "#5a6d8a", fontSize: 9, rotate: 40 }, axisLine: { lineStyle: { color: "#1a2640" } }, name: "日期", nameTextStyle: { color: "#5a6d8a" } },
-      yAxis: { type: "category", data: catList.map(c => DOC_CATEGORY_CN[c] || c), axisLabel: { color: "#98aec9", fontSize: 10 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      yAxis: { type: "category", data: catList.map(c => DOC_CATEGORY_CN[c] || c), axisLabel: { color: "#98aec9", fontSize:12 }, axisLine: { lineStyle: { color: "#1a2640" } } },
       series: [{ type: "scatter", data: scatterData, symbolSize: 12, itemStyle: { color: "#00d4ff", borderColor: "#0a0e1a", borderWidth: 1 } }],
     }, true);
     const h = () => tlInst.current?.resize();
@@ -195,9 +195,9 @@ export default function DocumentsEvidence() {
                 <thead><tr><th>文件名</th><th>日期</th></tr></thead>
                 <tbody>
                   {docs.slice(0, 5).map((d, i) => (
-                    <tr key={i}><td className="mono" style={{fontSize:10, maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{d.file_name || "-"}</td><td style={{fontSize:10}}>{d.report_date || "-"}</td></tr>
+                    <tr key={i}><td className="mono" style={{fontSize:12, maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{d.file_name || "-"}</td><td style={{fontSize:12}}>{d.report_date || "-"}</td></tr>
                   ))}
-                  {docs.length > 5 && <tr><td colSpan={2} style={{fontSize:10, color:"#5a6d8a", textAlign:"center"}}>... 还有 {docs.length - 5} 份</td></tr>}
+                  {docs.length > 5 && <tr><td colSpan={2} style={{fontSize:12, color:"#5a6d8a", textAlign:"center"}}>... 还有 {docs.length - 5} 份</td></tr>}
                 </tbody>
               </table>
             </div>

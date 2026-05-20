@@ -76,7 +76,7 @@ export default function Area2Overview() {
           min: range[0], max: range[1], splitNumber: 4,
           axisLine: { lineStyle: { width: 18, color: [[pct / 100, "#00d4ff"], [1, "#1a2640"]] } },
           axisTick: { show: false }, splitLine: { show: false },
-          axisLabel: { color: "#5a6d8a", fontSize: 10, distance: 20, formatter: "{value}环" },
+          axisLabel: { color: "#5a6d8a", fontSize:12, distance: 20, formatter: "{value}环" },
           pointer: { length: "65%", width: 6, itemStyle: { color: "#e65100" } },
           detail: { valueAnimation: true, formatter: "当前\n{value}环", color: "#c8d6e5", fontSize: 18, offsetCenter: [0, "55%"], lineHeight: 22 },
           data: [{ value: curr }],
@@ -103,7 +103,7 @@ export default function Area2Overview() {
           formatter: (p: { name: string; value: number }[]) => { const idx = ringNums.indexOf(p[0].value); return "环号: " + p[0].value + (idx >= 0 && dates[idx] ? "<br/>日期: " + dates[idx] : "") + (idx >= 0 && chainLabels[idx] ? "<br/>里程: " + chainLabels[idx] : ""); }
         },
         grid: { left: 50, right: 50, top: 16, bottom: 24 },
-        xAxis: { type: "category", data: dates, axisLabel: { color: "#5a6d8a", fontSize: 10 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+        xAxis: { type: "category", data: dates, axisLabel: { color: "#5a6d8a", fontSize:12 }, axisLine: { lineStyle: { color: "#1a2640" } } },
         yAxis: { type: "value", name: "环号", nameTextStyle: { color: "#5a6d8a" }, axisLabel: { color: "#5a6d8a", fontSize: 11 }, splitLine: { lineStyle: { color: "#121e36" } } },
         series: [{
           type: "line", data: ringNums, smooth: true,
@@ -127,10 +127,10 @@ export default function Area2Overview() {
       alertBarInst.current.setOption({
         backgroundColor: "transparent",
         tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-        legend: { top: 4, textStyle: { color: "#98aec9", fontSize: 10 } },
+        legend: { top: 4, textStyle: { color: "#98aec9", fontSize:12 } },
         grid: { left: 50, right: 20, top: 30, bottom: 60 },
-        xAxis: { type: "category", data: items.map(i => i.monitoring_item || ""), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
-        yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
+        xAxis: { type: "category", data: items.map(i => i.monitoring_item || ""), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+        yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12 }, splitLine: { lineStyle: { color: "#121e36" } } },
         series: [
           { name: "报警", type: "bar", stack: "total", data: items.map(i => i.alarm_cnt || 0), itemStyle: { color: "#e65100" }, barWidth: 20 },
           { name: "预警", type: "bar", stack: "total", data: items.map(i => i.warning_cnt || 0), itemStyle: { color: "#d4a050" } },
@@ -186,8 +186,8 @@ export default function Area2Overview() {
                 borderLeft: "4px solid " + levelColor, borderRadius: 4, padding: "12px 14px"
               }}>
                 <div style={{ fontSize: 11, color: "#6a7d9e", marginBottom: 4 }}>{card.title}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: levelColor }}>{card.value}</div>
-                <div style={{ fontSize: 10, color: "#5a6d8a", marginTop: 2 }}>{card.subtitle || ""}</div>
+                <div style={{ fontSize:27, fontWeight: 700, color: levelColor }}>{card.value}</div>
+                <div style={{ fontSize:12, color: "#5a6d8a", marginTop: 2 }}>{card.subtitle || ""}</div>
               </div>
             );
           })}
@@ -212,7 +212,7 @@ export default function Area2Overview() {
           {analytics?.monitoring?.by_item && (
             <div style={{ flex: 1.5, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 12 }}>
               <h4 style={{ color: "#6a7d9e", fontSize: 13, marginBottom: 4 }}>监测项目报警分布</h4>
-              <p style={{ color: "#5a6d8a", fontSize: 10, marginBottom: 4 }}>
+              <p style={{ color: "#5a6d8a", fontSize:12, marginBottom: 4 }}>
                 阈值来源：P95/P99统计推导，非工程设计值
               </p>
               <div ref={alertBarRef} style={{ height: 260 }} />
@@ -233,7 +233,7 @@ export default function Area2Overview() {
                     <div style={{ height: 5, background: "#1a2640", borderRadius: 2, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: barPct + "%", background: "linear-gradient(90deg, #0d47a1, #00d4ff)", borderRadius: 2 }} />
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize:12 }}>
                       <span style={{ color: "#00d4ff", fontWeight: 600 }}>{(g.sample_count || 0).toLocaleString()}条</span>
                       {g.exceed_count != null && g.exceed_count > 0 ? (
                         <span style={{ color: "#e65100" }}>{g.exceed_count}条超限</span>
@@ -256,19 +256,19 @@ export default function Area2Overview() {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <div style={{ background: "#2a0a0a", border: "1px solid #5a1a1a", borderRadius: 4, padding: "8px 14px", flex: "1 1 100px" }}>
               <span style={{ fontSize: 11, color: "#e65100" }}>报警</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: "#e65100", marginLeft: 8 }}>{(monSummary.alert_summary.alarm || 0).toLocaleString()}</span>
+              <span style={{ fontSize:27, fontWeight: 700, color: "#e65100", marginLeft: 8 }}>{(monSummary.alert_summary.alarm || 0).toLocaleString()}</span>
             </div>
             <div style={{ background: "#1a1a10", border: "1px solid #5a4a2a", borderRadius: 4, padding: "8px 14px", flex: "1 1 100px" }}>
               <span style={{ fontSize: 11, color: "#d4a050" }}>预警</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: "#d4a050", marginLeft: 8 }}>{(monSummary.alert_summary.warning || 0).toLocaleString()}</span>
+              <span style={{ fontSize:27, fontWeight: 700, color: "#d4a050", marginLeft: 8 }}>{(monSummary.alert_summary.warning || 0).toLocaleString()}</span>
             </div>
             <div style={{ background: "#101a10", border: "1px solid #2a5a2a", borderRadius: 4, padding: "8px 14px", flex: "1 1 100px" }}>
               <span style={{ fontSize: 11, color: "#2e7d32" }}>正常</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: "#2e7d32", marginLeft: 8 }}>{(monSummary.alert_summary.normal || 0).toLocaleString()}</span>
+              <span style={{ fontSize:27, fontWeight: 700, color: "#2e7d32", marginLeft: 8 }}>{(monSummary.alert_summary.normal || 0).toLocaleString()}</span>
             </div>
             <div style={{ background: "#111e30", border: "1px solid #1a2640", borderRadius: 4, padding: "8px 14px", flex: "1 1 100px" }}>
               <span style={{ fontSize: 11, color: "#5a6d8a" }}>总读数</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: "#5a6d8a", marginLeft: 8 }}>{(monSummary.total_readings || 0).toLocaleString()}</span>
+              <span style={{ fontSize:27, fontWeight: 700, color: "#5a6d8a", marginLeft: 8 }}>{(monSummary.total_readings || 0).toLocaleString()}</span>
             </div>
           </div>
         </section>
@@ -284,9 +284,9 @@ export default function Area2Overview() {
               <thead><tr><th>环号</th><th>里程</th><th>备注</th></tr></thead>
               <tbody>
                 {mileage.rings.slice(0, 5).map((r, i) => (
-                  <tr key={i}><td className="mono">{r.ring_no}</td><td className="mono">{r.chainage}</td><td style={{ fontSize: 10, color: "#5a6d8a" }}>{r.mileage}</td></tr>
+                  <tr key={i}><td className="mono">{r.ring_no}</td><td className="mono">{r.chainage}</td><td style={{ fontSize:12, color: "#5a6d8a" }}>{r.mileage}</td></tr>
                 ))}
-                {mileage.rings.length > 5 && <tr><td colSpan={3} style={{ textAlign: "center", color: "#5a6d8a", fontSize: 10 }}>... 共{mileage.rings.length}环</td></tr>}
+                {mileage.rings.length > 5 && <tr><td colSpan={3} style={{ textAlign: "center", color: "#5a6d8a", fontSize:12 }}>... 共{mileage.rings.length}环</td></tr>}
               </tbody>
             </table>
           </div>
@@ -309,7 +309,7 @@ export default function Area2Overview() {
               return (
                 <div key={i} style={{ background: "#1a1210", border: "1px solid #3a2a1a", borderRadius: 4, padding: "8px 12px", minWidth: 160 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#d4a050" }}>{r.name}</div>
-                  <div style={{ fontSize: 10, color: "#8a6d5a" }}>{desc}</div>
+                  <div style={{ fontSize:12, color: "#8a6d5a" }}>{desc}</div>
                   <div style={{ fontSize: 9, color: levelColor }}>{levelCn}</div>
                 </div>
               );
@@ -330,7 +330,7 @@ export default function Area2Overview() {
               const lvlColor = LEVEL_COLOR[String(fRec.level || "")] || "#00d4ff";
               return (
                 <div key={i} style={{ fontSize: 12, color: "#98aec9", display: "flex", alignItems: "flex-start", gap: 8 }}>
-                  <span style={{ background: lvlColor, color: "#fff", borderRadius: 2, padding: "1px 5px", fontSize: 10, whiteSpace: "nowrap", opacity: 0.9 }}>{lvl}</span>
+                  <span style={{ background: lvlColor, color: "#fff", borderRadius: 2, padding: "1px 5px", fontSize:12, whiteSpace: "nowrap", opacity: 0.9 }}>{lvl}</span>
                   <span>{msg}</span>
                 </div>
               );
@@ -352,8 +352,8 @@ export default function Area2Overview() {
               const statusColor = status === "P0" ? "#e65100" : status === "P1" ? "#d4a050" : "#5a6d8a";
               return (
                 <div key={i} style={{ background: "#111e30", border: "1px solid #1a2640", borderRadius: 4, padding: "6px 12px" }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#d4a050" }}>{field}</span>
-                  <span style={{ fontSize: 10, color: "#8a6d5a", marginLeft: 8 }}>{reason}</span>
+                  <span style={{ fontSize:12, fontWeight: 600, color: "#d4a050" }}>{field}</span>
+                  <span style={{ fontSize:12, color: "#8a6d5a", marginLeft: 8 }}>{reason}</span>
                   {status && <span style={{ fontSize: 9, color: statusColor, marginLeft: 6 }}>[{status}]</span>}
                 </div>
               );

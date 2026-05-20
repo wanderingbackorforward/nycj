@@ -81,7 +81,7 @@ export default function Area1PointAnalysis() {
       series.push({
         name: "设计限值", type: "line", yAxisIndex: 0, data: Array(currentVals.length).fill(designLimit) as number[],
         lineStyle: { type: "dotted", width: 2, color: "#e65100" }, itemStyle: { color: "#e65100" }, symbol: "none",
-        markLine: { silent: true, symbol: "none", lineStyle: { color: "#e65100", type: "dashed" }, label: { formatter: "限值" + designLimit, color: "#e65100", fontSize: 10 }, data: [{ yAxis: designLimit }] },
+        markLine: { silent: true, symbol: "none", lineStyle: { color: "#e65100", type: "dashed" }, label: { formatter: "限值" + designLimit, color: "#e65100", fontSize:12 }, data: [{ yAxis: designLimit }] },
       });
     }
     return {
@@ -89,10 +89,10 @@ export default function Area1PointAnalysis() {
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       legend: { top: 8, textStyle: { color: "#98aec9", fontSize: 11 } },
       grid: { left: 60, right: 60, top: 45, bottom: 30 },
-      xAxis: { type: "category", data: dates, axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 30 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      xAxis: { type: "category", data: dates, axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 30 }, axisLine: { lineStyle: { color: "#1a2640" } } },
       yAxis: [
-        { type: "value", name: "当前值", nameTextStyle: { color: "#00d4ff", fontSize: 11 }, axisLabel: { color: "#00d4ff", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
-        { type: "value", name: "累计变化", nameTextStyle: { color: "#e65100", fontSize: 11 }, axisLabel: { color: "#e65100", fontSize: 10 }, splitLine: { show: false } },
+        { type: "value", name: "当前值", nameTextStyle: { color: "#00d4ff", fontSize: 11 }, axisLabel: { color: "#00d4ff", fontSize:12 }, splitLine: { lineStyle: { color: "#121e36" } } },
+        { type: "value", name: "累计变化", nameTextStyle: { color: "#e65100", fontSize: 11 }, axisLabel: { color: "#e65100", fontSize:12 }, splitLine: { show: false } },
       ],
       series,
     };
@@ -147,7 +147,7 @@ export default function Area1PointAnalysis() {
           <div style={{background:"#0f1525", border:"1px solid #1a2640", borderLeft:"4px solid " + (diagnosis.findings.some(f => f.level === "critical") ? "#e65100" : "#00d4ff"), borderRadius:4, padding:14}}>
             {diagnosis.findings.map((f, i) => (
               <div key={i} style={{display:"flex", alignItems:"flex-start", gap:8, marginBottom:6}}>
-                <span style={{background: f.level === "critical" ? "#e65100" : "#00d4ff", color:"#fff", borderRadius:2, padding:"1px 6px", fontSize:10, fontWeight:600, whiteSpace:"nowrap", marginTop:1}}>
+                <span style={{background: f.level === "critical" ? "#e65100" : "#00d4ff", color:"#fff", borderRadius:2, padding:"1px 6px", fontSize:12, fontWeight:600, whiteSpace:"nowrap", marginTop:1}}>
                   {f.level === "critical" ? "!!" : "i"}
                 </span>
                 <span style={{fontSize:12, color:"#c8d6e5", lineHeight:1.6}}>{f.detail}</span>
@@ -164,7 +164,7 @@ export default function Area1PointAnalysis() {
                 <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
                   {diagnosis.siblings_comparison.filter(s => s.latest_cumulative != null).slice(0, 12).map((s, i) => (
                     <div key={i} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:3, padding:"6px 10px", textAlign:"center", minWidth:70}}>
-                      <div style={{fontSize:10, color:"#6a7d9e"}}>{s.point_code}</div>
+                      <div style={{fontSize:12, color:"#6a7d9e"}}>{s.point_code}</div>
                       <div style={{fontSize:15, fontWeight:700, color: Math.abs(s.latest_cumulative || 0) > 100 ? "#e65100" : "#00d4ff"}}>{s.latest_cumulative?.toFixed(1) ?? "-"}</div>
                       <div style={{fontSize:9, color:"#5a6d8a"}}>{s.date}</div>
                     </div>
@@ -184,7 +184,7 @@ export default function Area1PointAnalysis() {
                         <td className="mono">{r.current_value?.toFixed(2)}</td>
                         <td className="mono" style={{color: Math.abs(r.cumulative_change) > 100 ? "#e65100" : "#c8d6e5"}}>{r.cumulative_change?.toFixed(1)}</td>
                         <td className="mono" style={{color: Math.abs(r.daily_change) > 20 ? "#e65100" : "#5a6d8a"}}>{r.daily_change?.toFixed(1)}</td>
-                        <td style={{fontSize:10, color:"#5a6d8a", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{r.source}</td>
+                        <td style={{fontSize:12, color:"#5a6d8a", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{r.source}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -213,9 +213,9 @@ export default function Area1PointAnalysis() {
           <div style={{display:"flex", gap:10, overflowX:"auto", paddingBottom:6}}>
             {evItems.map((e, i) => (
               <div key={i} style={{minWidth:170, background:"#0f1525", border:"1px solid #1a2640", borderRadius:4, padding:10, flexShrink:0}}>
-                <div style={{fontSize:10, color:"#5a6d8a", marginBottom:4}}>证据 #{i+1}</div>
+                <div style={{fontSize:12, color:"#5a6d8a", marginBottom:4}}>证据 #{i+1}</div>
                 <div className="mono" style={{fontSize:11, color:"#98aec9", wordBreak:"break-all", marginBottom:2}}>{String(e.file_name || "-")}</div>
-                <div style={{fontSize:10, color:"#5a6d8a"}}>
+                <div style={{fontSize:12, color:"#5a6d8a"}}>
                   {e.sheet_name ? "工作表: " + String(e.sheet_name) : ""}
                   {e.row_index != null ? " 行" + String(e.row_index) : ""}
                 </div>
@@ -230,7 +230,7 @@ export default function Area1PointAnalysis() {
       {trendAccel && trendAccel.items && (
         <div className="card" style={{marginBottom:12}}>
           <h4 style={{color:"#00d4ff", fontSize:13, marginBottom:4}}>趋势加速度分析</h4>
-          <p style={{color:"#5a6d8a", fontSize:10, marginBottom:6}}>正加速=恶化加快，负加速=恶化减缓</p>
+          <p style={{color:"#5a6d8a", fontSize:12, marginBottom:6}}>正加速=恶化加快，负加速=恶化减缓</p>
           {trendAccel.items.filter(d => d.point_code === selectedPoint).slice(0, 1).map((d, i) => (
             <div key={i}>
               <span style={{color:"#c8d6e5", fontSize:12}}>趋势方向: </span>
@@ -246,7 +246,7 @@ export default function Area1PointAnalysis() {
           {/* Show all items with non-null accel */}
           <div style={{display:"flex", flexWrap:"wrap", gap:4, marginTop:6}}>
             {trendAccel.items.filter(d => d.point_code === selectedPoint && d.accel_val != null).slice(0, 5).map((d, i) => (
-              <span key={i} style={{fontSize:10, padding:"2px 6px", borderRadius:2,
+              <span key={i} style={{fontSize:12, padding:"2px 6px", borderRadius:2,
                 background: (d.accel_val || 0) > 0 ? "#2a0a0a" : "#0a1a0a",
                 color: (d.accel_val || 0) > 0 ? "#e65100" : "#2e7d32"
               }}>{d.latest_daily_change?.toFixed(1)}mm/日 → {(d.latest_daily_change||0) + (d.accel_val||0)}mm/日(次)</span>
@@ -281,8 +281,8 @@ export default function Area1PointAnalysis() {
           <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
             {analysis.data_gaps.map((g, i) => (
               <div key={i} style={{background:"#1a1210", border:"1px solid #5a3a1a", borderRadius:4, padding:"6px 12px"}}>
-                <span style={{fontSize:10, color:"#d4a050", fontWeight:600}}>{g.category}</span>
-                <span style={{fontSize:10, color:"#8a6d5a", marginLeft:8}}>{g.description}</span>
+                <span style={{fontSize:12, color:"#d4a050", fontWeight:600}}>{g.category}</span>
+                <span style={{fontSize:12, color:"#8a6d5a", marginLeft:8}}>{g.description}</span>
               </div>
             ))}
           </div>

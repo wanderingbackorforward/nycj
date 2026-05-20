@@ -109,10 +109,10 @@ export default function Area2Tunneling() {
     chartInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#7a8ba8", fontSize: 10 }, type: "scroll" },
+      legend: { bottom: 0, textStyle: { color: "#7a8ba8", fontSize:12 }, type: "scroll" },
       grid: { left: 50, right: 20, top: 10, bottom: 40 },
-      xAxis: { type: "category", data: rings.map(r => ringMileage[r] ? r + '\n' + ringMileage[r] : String(r)), axisLabel: { color: "#5a6d8a", fontSize: 10 }, axisLine: { lineStyle: { color: "#1a2845" } } },
-      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
+      xAxis: { type: "category", data: rings.map(r => ringMileage[r] ? r + '\n' + ringMileage[r] : String(r)), axisLabel: { color: "#5a6d8a", fontSize:12 }, axisLine: { lineStyle: { color: "#1a2845" } } },
+      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12 }, splitLine: { lineStyle: { color: "#121e36" } } },
       series: paramNames.map((name, idx) => ({
         name, type: "line", smooth: true, symbol: "none",
         lineStyle: { width: 2, color: colors[idx % 6] },
@@ -141,8 +141,8 @@ export default function Area2Tunneling() {
 
   return (
     <div>
-      <h2 className="text-base font-semibold mb-1" style={{ color: "#c8d6e5" }}>2工区掘进参数</h2>
-      <p className="text-xs mb-4" style={{ color: "#6a7d9e" }}>
+      <h2 className="t-heading mb-1" style={{ color: "#c8d6e5" }}>2工区掘进参数</h2>
+      <p className="t-label mb-4" style={{ color: "#6a7d9e" }}>
         盾构区间 · {totalParams.toLocaleString()}条参数 · {groups.length}个分组 · {totalExceed.toLocaleString()}条超限(P05/P95)
       </p>
 
@@ -155,10 +155,10 @@ export default function Area2Tunneling() {
             <div key={g.group_code} onClick={() => setSelectedGroup(g.group_code)}
               className="rounded cursor-pointer p-3 flex-1 min-w-[150px]"
               style={{ background: sel ? "#111e30" : "#0f1525", border: sel ? "1px solid #00d4ff" : "1px solid #1a2640" }}>
-              <div className="text-xs font-semibold mb-1" style={{ color: sel ? "#00d4ff" : "#98aec9" }}>{g.group_name_cn}</div>
+              <div className="t-label font-semibold mb-1" style={{ color: sel ? "#00d4ff" : "#98aec9" }}>{g.group_name_cn}</div>
               <div className="flex items-baseline justify-between">
                 <span className="text-xl font-bold" style={{ color: "#c8d6e5" }}>{g.parameter_count.toLocaleString()}</span>
-                <span className="text-[10px]" style={{ color: "#5a6d8a" }}>条参数</span>
+                <span className="t-small" style={{ color: "#5a6d8a" }}>条参数</span>
               </div>
               <div className="flex justify-between mt-1 text-[10px]">
                 <span style={{ color: g.exceed_count > 0 ? "#e65100" : "#2e7d32" }}>超限 {g.exceed_count.toLocaleString()} 条</span>
@@ -172,12 +172,12 @@ export default function Area2Tunneling() {
       {/* 趋势图 */}
       <div className="card mb-4">
         <div className="flex justify-between items-center mb-1">
-          <h4 className="text-sm font-semibold" style={{ color: "#6a7d9e" }}>{selGroup?.group_name_cn || selectedGroup} · 趋势图</h4>
-          <span className="text-[11px]" style={{ color: "#5a6d8a" }}>
+          <h4 className="t-section" style={{ color: "#6a7d9e" }}>{selGroup?.group_name_cn || selectedGroup} · 趋势图</h4>
+          <span className="t-label" style={{ color: "#5a6d8a" }}>
             {paramsLoading ? "加载中..." : params.length > 0 ? `前6参数 · ${params.length}条 · ${[...new Set(params.map(p=>p.ring_no))].length}环` : "点击分组加载"}
           </span>
         </div>
-        <p className="text-[10px] mb-1" style={{ color: "#5a6d8a" }}>
+        <p className="t-small mb-1" style={{ color: "#5a6d8a" }}>
           阈值来源：P05/P95统计推导（非工程设计值），{selGroup?.exceed_count || 0}条超限需工程判断
         </p>
         <div style={{ height: 300, minHeight: 300, position: "relative" }}>
@@ -190,8 +190,8 @@ export default function Area2Tunneling() {
 
       {/* 建议动作 */}
       <div className="card card-accent mb-4">
-        <h3 className="text-sm font-semibold mb-2" style={{ color: "#00d4ff" }}>建议动作</h3>
-        <div className="text-xs" style={{ color: "#98aec9" }}>
+        <h3 className="t-section mb-2" style={{ color: "#00d4ff" }}>建议动作</h3>
+        <div className="t-label" style={{ color: "#98aec9" }}>
           <p>1. 核对姿态/油缸行程分组的超限——该组直接影响盾构姿态和管片拼装质量</p>
           <p>2. 将P05/P95统计阈值替换为厂家提供的正式参数控制范围</p>
           <p>3. 姿态偏差限值已配置{postureReady}/6类（GB50446），建议根据本项目设计文件确认</p>
@@ -200,12 +200,12 @@ export default function Area2Tunneling() {
 
       {/* 数据缺口 */}
       <div className="card">
-        <h3 className="text-sm font-semibold mb-2" style={{ color: "#6a7d9e" }}>数据缺口</h3>
+        <h3 className="t-section mb-2" style={{ color: "#6a7d9e" }}>数据缺口</h3>
         <div className="flex gap-2.5 flex-wrap">
           {["参数阈值全部基于统计推导非PLC或设计文件中的正式限值", "6类姿态偏差限值已配置缺少本项目设计文件具体要求", "33环里程已推算未与导向系统数据交叉验证"].map((d, i) => (
             <div key={i} className="flex-1 min-w-[180px] rounded p-2.5" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-              <div className="text-[11px] mb-1" style={{ color: "#d4a050" }}>{["参数限值", "姿态偏差", "环号-里程"][i]}</div>
-              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>{d}</div>
+              <div className="t-label mb-1" style={{ color: "#d4a050" }}>{["参数限值", "姿态偏差", "环号-里程"][i]}</div>
+              <div className="t-small" style={{ color: "#5a6d8a" }}>{d}</div>
             </div>
           ))}
         </div>

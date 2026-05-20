@@ -54,9 +54,9 @@ export default function Area1Monitoring() {
     barInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { top: 0, textStyle: { color: "#98aec9", fontSize: 10 } },
+      legend: { top: 0, textStyle: { color: "#98aec9", fontSize:12 } },
       grid: { left: 50, right: 20, top: 30, bottom: 70 },
-      xAxis: { type: "category", data: top.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 40 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      xAxis: { type: "category", data: top.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 40 }, axisLine: { lineStyle: { color: "#1a2640" } } },
       yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 11 }, splitLine: { lineStyle: { color: "#121e36" } } },
       series: [
         { name: "正常", type: "bar", data: top.map(i => i.normal_count || 0), stack: "total", itemStyle: { color: "#2e7d32" }, barWidth: 24 },
@@ -77,11 +77,11 @@ export default function Area1Monitoring() {
     pieInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize: 10 } },
+      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize:12 } },
       series: [{
         type: "pie", radius: ["40%", "65%"], center: ["50%", "45%"],
         data: overview.status_distribution.map(s => ({ name: s.status_display_cn || s.status_code, value: s.count, itemStyle: { color: colors[s.status_code] || "#5a6d8a" } })),
-        label: { color: "#98aec9", fontSize: 10 },
+        label: { color: "#98aec9", fontSize:12 },
         itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 },
       }],
     }, true);
@@ -108,11 +108,11 @@ export default function Area1Monitoring() {
         }
       },
       grid: { left: 140, right: 80, top: 10, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#121e36" } }, name: "超限倍数", nameTextStyle: { color: "#5a6d8a", fontSize: 10 } },
+      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#121e36" } }, name: "超限倍数", nameTextStyle: { color: "#5a6d8a", fontSize:12 } },
       yAxis: {
         type: "category",
         data: exceedAlerts.map(a => (a.point_code || "") + " " + (a.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")),
-        axisLabel: { color: "#98aec9", fontSize: 10, width: 130, overflow: "truncate" },
+        axisLabel: { color: "#98aec9", fontSize:12, width: 130, overflow: "truncate" },
         axisLine: { lineStyle: { color: "#1a2640" } },
       },
       series: [{
@@ -123,8 +123,8 @@ export default function Area1Monitoring() {
         }),
         barWidth: 18,
         itemStyle: { borderRadius: [0, 3, 3, 0], color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{offset:0,color:"#e65100"},{offset:1,color:"#e65100"}]) },
-        label: { show: true, position: "right", color: "#e65100", fontSize: 10, formatter: "{c}x" },
-        markLine: { silent: true, symbol: "none", data: [{ xAxis: 1, lineStyle: { color: "#5a4a2a", type: "dashed" }, label: { formatter: "设计限值", color: "#5a4a2a", fontSize: 10 } }] },
+        label: { show: true, position: "right", color: "#e65100", fontSize:12, formatter: "{c}x" },
+        markLine: { silent: true, symbol: "none", data: [{ xAxis: 1, lineStyle: { color: "#5a4a2a", type: "dashed" }, label: { formatter: "设计限值", color: "#5a4a2a", fontSize:12 } }] },
       }],
     }, true);
     const h = () => exceedInst.current?.resize();
@@ -146,11 +146,11 @@ export default function Area1Monitoring() {
     reviewInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize: 10 } },
+      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize:12 } },
       series: [{
         type: "pie", radius: ["45%", "70%"], center: ["50%", "45%"],
         data: Object.entries(reviewCounts).map(([k, v]) => ({ name: levelNames[k] || k, value: v, itemStyle: { color: levelColors[k] || "#5a6d8a" } })),
-        label: { color: "#98aec9", fontSize: 10 },
+        label: { color: "#98aec9", fontSize:12 },
         itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 },
       }],
     }, true);
@@ -229,10 +229,10 @@ export default function Area1Monitoring() {
               }}>
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4}}>
                   <span style={{
-                    fontSize:10, fontWeight:600, padding:"2px 6px", borderRadius:2, color:"#fff",
+                    fontSize:12, fontWeight:600, padding:"2px 6px", borderRadius:2, color:"#fff",
                     background: f.level === "critical" ? "#e65100" : "#00d4ff",
                   }}>{f.level === "critical" ? "! 重点" : "i 关注"}</span>
-                  <span style={{fontSize:10, color:"#5a6d8a"}}>#{i+1}</span>
+                  <span style={{fontSize:12, color:"#5a6d8a"}}>#{i+1}</span>
                 </div>
                 <div style={{fontSize:13, fontWeight:600, color:"#c8d6e5", marginBottom:3}}>{f.title}</div>
                 <div style={{fontSize:11, color:"#98aec9", lineHeight:1.5}}>{f.detail}</div>
@@ -270,8 +270,8 @@ export default function Area1Monitoring() {
                   return (
                     <div key={i} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:4, padding:"6px 10px", minWidth:100}}>
                       <div style={{fontSize:11, color:"#c8d6e5"}}>{z.side}·{z.part}</div>
-                      <div style={{fontSize:10, color:"#5a6d8a"}}>超限{z.exceed_count} 复核{z.severe_count}</div>
-                      <span style={{fontSize:10, padding:"1px 5px", borderRadius:2, background:sev, color:"#fff", opacity:0.8}}>{z.zone_status}</span>
+                      <div style={{fontSize:12, color:"#5a6d8a"}}>超限{z.exceed_count} 复核{z.severe_count}</div>
+                      <span style={{fontSize:12, padding:"1px 5px", borderRadius:2, background:sev, color:"#fff", opacity:0.8}}>{z.zone_status}</span>
                     </div>
                   );
                 })}
@@ -287,7 +287,7 @@ export default function Area1Monitoring() {
                 return (
                   <div key={i} style={{fontSize:11, color:"#98aec9", padding:"3px 0", borderBottom:"1px solid #1a2640"}}>
                     {c.item_a}↔{c.item_b} <span style={{color:clr, fontWeight:600}}>r={c.coefficient?.toFixed(2)}</span>
-                    <span style={{color:"#5a6d8a", fontSize:10, marginLeft:6}}>{c.strength}{c.direction}</span>
+                    <span style={{color:"#5a6d8a", fontSize:12, marginLeft:6}}>{c.strength}{c.direction}</span>
                   </div>
                 );
               })}

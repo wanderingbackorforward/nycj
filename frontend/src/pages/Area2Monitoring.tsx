@@ -38,8 +38,8 @@ export default function Area2Monitoring() {
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       grid: { left: 50, right: 40, top: 10, bottom: 70 },
-      xAxis: { type: "category", data: items.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
-      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
+      xAxis: { type: "category", data: items.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12 }, splitLine: { lineStyle: { color: "#121e36" } } },
       series: [
         { name: "读数数", type: "bar", data: items.map(i => i.reading_count || 0), itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:"#00d4ff"},{offset:1,color:"#0d47a1"}]), borderRadius: [4,4,0,0] }, barWidth: 24 },
       ],
@@ -64,7 +64,7 @@ export default function Area2Monitoring() {
     pieInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize: 10 } },
+      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize:12 } },
       series: [{ type: "pie", radius: ["40%", "65%"], center: ["50%", "45%"], data, label: { color: "#98aec9", fontSize: 11 }, itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 } }],
     }, true);
     const h = () => pieInst.current?.resize();
@@ -97,7 +97,7 @@ export default function Area2Monitoring() {
       radar: {
         center: ["50%", "50%"], radius: "65%",
         indicator: indicators,
-        axisName: { color: "#98aec9", fontSize: 10 },
+        axisName: { color: "#98aec9", fontSize:12 },
         splitArea: { areaStyle: { color: ["rgba(0,212,255,0.02)"] } },
         splitLine: { lineStyle: { color: "#1a2640" } },
         axisLine: { lineStyle: { color: "#1a2640" } },

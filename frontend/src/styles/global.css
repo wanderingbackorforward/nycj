@@ -1,91 +1,81 @@
 @import "tailwindcss";
 
-/* ===== 宁扬城际数字驾驶舱 · 设计系统 ===== */
+/* ===== 宁扬城际数字驾驶舱 · 设计系统 v2 ===== */
 
 @theme {
-  /* 工程深色面板 */
   --color-panel: #0f1525;
   --color-panel-border: #1a2640;
   --color-panel-hover: #111e30;
-
-  /* 主色系 */
-  --color-accent: #00d4ff;        /* 青色：强调 / 选中 / 链接 */
-  --color-accent-dim: #0d47a1;    /* 深青：渐变起点 */
-  --color-accent-muted: #1a4a6a;  /* 青边框 */
-
-  /* 语义色 */
-  --color-danger: #e65100;        /* 红色：超限 / 报警 */
+  --color-accent: #00d4ff;
+  --color-accent-dim: #0d47a1;
+  --color-accent-muted: #1a4a6a;
+  --color-danger: #e65100;
   --color-danger-bg: #2a0a0a;
   --color-danger-border: #5a1a1a;
-  --color-warning: #d4a050;       /* 琥珀：预警 / 待确认 */
+  --color-warning: #d4a050;
   --color-warning-bg: #1a1210;
   --color-warning-border: #5a3a1a;
-  --color-success: #2e7d32;       /* 绿色：正常 */
+  --color-success: #2e7d32;
   --color-success-bg: #101a10;
   --color-success-border: #2a5a2a;
-
-  /* 文字层级 */
   --color-text-primary: #c8d6e5;
   --color-text-secondary: #98aec9;
   --color-text-muted: #6a7d9e;
   --color-text-dim: #5a6d8a;
-
-  /* 背景 */
   --color-bg-deep: #0a0e1a;
   --color-bg-card: #0f1525;
-  --color-bg-grid: #121e36;
-  --color-bg-hover: #111e30;
-
-  /* 字号 */
-  --font-size-xs: 0.625rem;   /* 10px */
-  --font-size-sm: 0.6875rem;  /* 11px */
-  --font-size-base: 0.75rem;  /* 12px */
-  --font-size-md: 0.8125rem;  /* 13px */
-  --font-size-lg: 0.875rem;   /* 14px */
-  --font-size-xl: 1.125rem;   /* 18px */
-  --font-size-2xl: 1.375rem;  /* 22px */
-  --font-size-3xl: 1.5rem;    /* 24px */
-
-  /* 圆角 */
-  --radius-card: 0.375rem;    /* 6px */
-  --radius-tag: 0.25rem;      /* 4px */
 }
 
-/* 全局基础 */
 body {
   background: var(--color-bg-deep);
   color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   margin: 0;
 }
 
-/* 滚动条 */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg-deep); }
 ::-webkit-scrollbar-thumb { background: var(--color-panel-border); border-radius: 3px; }
 
-/* 等宽字体 */
 .mono { font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace; }
+
+/* ===== 5级字体系统 ===== */
+.t-stat   { font-size: 27px; font-weight: 700; line-height: 1.2; }  /* 统计数字 */
+.t-section{ font-size: 18px; font-weight: 700; line-height: 1.35; }  /* 区块标题 */
+.t-heading{ font-size: 16px; font-weight: 600; line-height: 1.4; }   /* 页面标题 */
+.t-body   { font-size: 14px; font-weight: 400; line-height: 1.6; }   /* 正文 */
+.t-label  { font-size: 12px; font-weight: 400; line-height: 1.5; }   /* 标签 */
+.t-small  { font-size: 11px; font-weight: 400; line-height: 1.4; }   /* 极小标注 */
+
+/* 颜色快捷 */
+.c-primary { color: var(--color-text-primary); }
+.c-secondary{ color: var(--color-text-secondary); }
+.c-muted   { color: var(--color-text-muted); }
+.c-dim     { color: var(--color-text-dim); }
+.c-accent  { color: var(--color-accent); }
+.c-danger  { color: var(--color-danger); }
+.c-warning { color: var(--color-warning); }
+.c-success { color: var(--color-success); }
+
+/* 卡片 */
+.card { background: var(--color-panel); border: 1px solid var(--color-panel-border); border-radius: 6px; padding: 16px; }
+.card-accent { border-left: 4px solid var(--color-accent); }
+.card-danger { border-left: 4px solid var(--color-danger); }
+.card-warning{ border-left: 4px solid var(--color-warning); }
+
+/* 状态标签 */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-danger { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
+.badge-warning{ background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+.badge-success{ background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+
+/* 数据表 */
+.db-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.db-table th { padding: 6px 10px; text-align: left; color: var(--color-text-muted); font-weight: 600; border-bottom: 1px solid var(--color-panel-border); font-size: 11px; }
+.db-table td { padding: 5px 10px; color: var(--color-text-secondary); border-bottom: 1px solid rgba(26,38,64,0.5); }
+.db-table tr:hover td { background: var(--color-bg-hover); }
 
 /* 页面容器 */
 .page-container { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
-
-/* 卡片 */
-.card { background: var(--color-panel); border: 1px solid var(--color-panel-border); border-radius: var(--radius-card); padding: 14px; }
-.card-accent { border-left: 4px solid var(--color-accent); }
-.card-danger { border-left: 4px solid var(--color-danger); }
-.card-warning { border-left: 4px solid var(--color-warning); }
-
-/* 状态标签 */
-.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-tag); font-size: var(--font-size-xs); font-weight: 600; }
-.badge-danger { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
-.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
-.badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
-
-/* 数据表 */
-.db-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-base); }
-.db-table th { padding: 6px 10px; text-align: left; color: var(--color-text-muted); font-weight: 600; border-bottom: 1px solid var(--color-panel-border); font-size: var(--font-size-sm); }
-.db-table td { padding: 5px 10px; color: var(--color-text-secondary); border-bottom: 1px solid rgba(26,38,64,0.5); }
-.db-table tr:hover td { background: var(--color-bg-hover); }
