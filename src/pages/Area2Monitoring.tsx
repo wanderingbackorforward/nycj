@@ -35,12 +35,12 @@ export default function Area2Monitoring() {
     if (!barInst.current) barInst.current = echarts.init(barRef.current);
     barInst.current.setOption({
       backgroundColor: "transparent",
-      tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 } },
+      tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       grid: { left: 50, right: 40, top: 10, bottom: 70 },
-      xAxis: { type: "category", data: items.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "var(--color-text-dim)", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "var(--color-panel-border)" } } },
-      yAxis: { type: "value", axisLabel: { color: "var(--color-text-dim)", fontSize: 10 }, splitLine: { lineStyle: { color: "var(--color-bg-grid)" } } },
+      xAxis: { type: "category", data: items.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
       series: [
-        { name: "读数数", type: "bar", data: items.map(i => i.reading_count || 0), itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:"var(--color-accent)"},{offset:1,color:"var(--color-accent-dim)"}]), borderRadius: [4,4,0,0] }, barWidth: 24 },
+        { name: "读数数", type: "bar", data: items.map(i => i.reading_count || 0), itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:"#00d4ff"},{offset:1,color:"#0d47a1"}]), borderRadius: [4,4,0,0] }, barWidth: 24 },
       ],
     }, true);
     const h = () => barInst.current?.resize();
@@ -61,9 +61,9 @@ export default function Area2Monitoring() {
     if (data.length === 0) return;
     pieInst.current.setOption({
       backgroundColor: "transparent",
-      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "var(--color-text-secondary)", fontSize: 10 } },
-      series: [{ type: "pie", radius: ["40%", "65%"], center: ["50%", "45%"], data, label: { color: "var(--color-text-secondary)", fontSize: 11 }, itemStyle: { borderColor: "var(--color-bg-deep)", borderWidth: 2 } }],
+      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
+      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize: 10 } },
+      series: [{ type: "pie", radius: ["40%", "65%"], center: ["50%", "45%"], data, label: { color: "#98aec9", fontSize: 11 }, itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 } }],
     }, true);
     const h = () => pieInst.current?.resize();
     window.addEventListener("resize", h);
@@ -90,18 +90,18 @@ export default function Area2Monitoring() {
     ];
     radarInst.current.setOption({
       backgroundColor: "transparent",
-      tooltip: { backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 } },
+      tooltip: { backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       radar: {
         center: ["50%", "50%"], radius: "65%",
         indicator: indicators,
-        axisName: { color: "var(--color-text-secondary)", fontSize: 10 },
+        axisName: { color: "#98aec9", fontSize: 10 },
         splitArea: { areaStyle: { color: ["rgba(0,212,255,0.02)"] } },
-        splitLine: { lineStyle: { color: "var(--color-panel-border)" } },
-        axisLine: { lineStyle: { color: "var(--color-panel-border)" } },
+        splitLine: { lineStyle: { color: "#1a2640" } },
+        axisLine: { lineStyle: { color: "#1a2640" } },
       },
       series: [{
         type: "radar",
-        data: [{ name: "2工区监测", value: [confScore, 75, 0, 70, 60], areaStyle: { color: "rgba(255,140,66,0.1)" }, lineStyle: { color: "var(--color-danger)" }, itemStyle: { color: "var(--color-danger)" } }],
+        data: [{ name: "2工区监测", value: [confScore, 75, 0, 70, 60], areaStyle: { color: "rgba(255,140,66,0.1)" }, lineStyle: { color: "#e65100" }, itemStyle: { color: "#e65100" } }],
       }],
     }, true);
     const h = () => radarInst.current?.resize();
@@ -120,7 +120,7 @@ export default function Area2Monitoring() {
     <div className="page-area2-monitoring">
       <h2 className="page-title">2工区监测响应</h2>
       <p className="page-desc">盾构区间监测数据状态。阈值来源：P95/P99统计推导，需人工复核确认报警。</p>
-      {error && <div className="page-warning-banner" style={{background:"var(--color-danger-bg)",border:"1px solid var(--color-danger-border)",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⚠ " + error}</div>}
+      {error && <div className="page-warning-banner" style={{background:"#2a0a0a",border:"1px solid #5a1a1a",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⚠ " + error}</div>}
 
       <div className="mon-status-note" style={{marginBottom:16}}>
         <strong>监测阈值均基于P99/P95统计推导（非工程设计值）。1,430条报警级读数需人工复核。</strong>1,430条报警级读数需人工复核确认是否为真实超限。
@@ -128,52 +128,52 @@ export default function Area2Monitoring() {
 
       {/* ======== Row 1: 监测项目柱状图 + 解析置信度饼图 ======== */}
       <section style={{display:"flex", gap:16, marginBottom:16}}>
-        <div style={{flex:1.5, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
-          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>监测项目读数分布</h4>
+        <div style={{flex:1.5, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>监测项目读数分布</h4>
           <div ref={barRef} style={{height:280}} />
         </div>
-        <div style={{flex:1, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
-          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>解析置信度</h4>
+        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>解析置信度</h4>
           <div ref={pieRef} style={{height:280}} />
         </div>
       </section>
 
       {/* ======== Row 2: 数据质量雷达图 + 数据量卡片 ======== */}
       <section style={{display:"flex", gap:16, marginBottom:16}}>
-        <div style={{flex:1, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
-          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>数据质量五维雷达</h4>
+        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>数据质量五维雷达</h4>
           <div ref={radarRef} style={{height:260}} />
         </div>
-        <div style={{flex:1, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
-          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:8}}>数据量总览</h4>
+        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:8}}>数据量总览</h4>
           <div className="mon-status-grid" style={{flexDirection:"column", gap:8}}>
             <div className="mon-status-card"><span className="mon-status-label">总读数</span><span className="mon-status-value">{summary?.total_readings?.toLocaleString() || "-"}</span></div>
-            <div className="mon-status-card" style={{borderLeft:"3px solid var(--color-danger)"}}><span className="mon-status-label">报警级</span><span className="mon-status-value" style={{color:"var(--color-danger)"}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).alarm?.toLocaleString() || "-" : "-"}</span></div>
+            <div className="mon-status-card" style={{borderLeft:"3px solid #e65100"}}><span className="mon-status-label">报警级</span><span className="mon-status-value" style={{color:"#e65100"}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).alarm?.toLocaleString() || "-" : "-"}</span></div>
             <div className="mon-status-card"><span className="mon-status-label">监测项目数</span><span className="mon-status-value">{items.length}</span></div>
-            <div className="mon-status-card" style={{borderLeft:"3px solid var(--color-warning)"}}><span className="mon-status-label">预警级</span><span className="mon-status-value" style={{color:"var(--color-warning)"}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).warning?.toLocaleString() || "-" : "-"}</span></div>
+            <div className="mon-status-card" style={{borderLeft:"3px solid #d4a050"}}><span className="mon-status-label">预警级</span><span className="mon-status-value" style={{color:"#d4a050"}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).warning?.toLocaleString() || "-" : "-"}</span></div>
           </div>
         </div>
       </section>
 
       {/* ======== 待确认原因分布标签 ======== */}
       <section style={{marginBottom:14}}>
-        <h3 style={{color:"var(--color-text-muted)", fontSize:14, marginBottom:8}}>监测状态分布</h3>
+        <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:8}}>监测状态分布</h3>
         <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
-          <div style={{background:"var(--color-danger-bg)", border:"1px solid var(--color-danger-border)", borderRadius:4, padding:"8px 14px"}}>
-            <span style={{fontSize:11, color:"var(--color-danger)"}}>报警</span>
-            <span style={{fontSize:18, fontWeight:700, color:"var(--color-danger)", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).alarm?.toLocaleString() || "0" : "0"}</span>
+          <div style={{background:"#2a0a0a", border:"1px solid #5a1a1a", borderRadius:4, padding:"8px 14px"}}>
+            <span style={{fontSize:11, color:"#e65100"}}>报警</span>
+            <span style={{fontSize:18, fontWeight:700, color:"#e65100", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).alarm?.toLocaleString() || "0" : "0"}</span>
           </div>
           <div style={{background:"#1a1a10", border:"1px solid #5a4a2a", borderRadius:4, padding:"8px 14px"}}>
-            <span style={{fontSize:11, color:"var(--color-warning)"}}>预警</span>
-            <span style={{fontSize:18, fontWeight:700, color:"var(--color-warning)", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).warning?.toLocaleString() || "0" : "0"}</span>
+            <span style={{fontSize:11, color:"#d4a050"}}>预警</span>
+            <span style={{fontSize:18, fontWeight:700, color:"#d4a050", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).warning?.toLocaleString() || "0" : "0"}</span>
           </div>
-          <div style={{background:"var(--color-success-bg)", border:"1px solid var(--color-success-border)", borderRadius:4, padding:"8px 14px"}}>
-            <span style={{fontSize:11, color:"var(--color-success)"}}>正常</span>
-            <span style={{fontSize:18, fontWeight:700, color:"var(--color-success)", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).normal?.toLocaleString() || "0" : "0"}</span>
+          <div style={{background:"#101a10", border:"1px solid #2a5a2a", borderRadius:4, padding:"8px 14px"}}>
+            <span style={{fontSize:11, color:"#2e7d32"}}>正常</span>
+            <span style={{fontSize:18, fontWeight:700, color:"#2e7d32", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).normal?.toLocaleString() || "0" : "0"}</span>
           </div>
-          <div style={{background:"var(--color-bg-hover)", border:"1px solid var(--color-panel-border)", borderRadius:4, padding:"8px 14px"}}>
-            <span style={{fontSize:11, color:"var(--color-text-dim)"}}>待确认</span>
-            <span style={{fontSize:18, fontWeight:700, color:"var(--color-text-dim)", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).unknown?.toLocaleString() || "0" : "0"}</span>
+          <div style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:4, padding:"8px 14px"}}>
+            <span style={{fontSize:11, color:"#5a6d8a"}}>待确认</span>
+            <span style={{fontSize:18, fontWeight:700, color:"#5a6d8a", marginLeft:8}}>{raw?.alert_summary ? (raw.alert_summary as Record<string,number>).unknown?.toLocaleString() || "0" : "0"}</span>
           </div>
         </div>
       </section>

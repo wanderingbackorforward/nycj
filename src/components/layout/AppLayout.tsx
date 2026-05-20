@@ -29,13 +29,13 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <span className="text-3xl">⚠</span>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>页面渲染异常</p>
-          <pre className="text-xs max-w-xl whitespace-pre-wrap break-all rounded p-3 mt-2" style={{ color: '#d47070', background: 'var(--color-bg-deep)' }}>
+          <p className="text-sm" style={{ color: '#6a7d9e' }}>页面渲染异常</p>
+          <pre className="text-xs max-w-xl whitespace-pre-wrap break-all rounded p-3 mt-2" style={{ color: '#d47070', background: '#0a0e1a' }}>
             {this.state.error?.message}
           </pre>
           <button
             className="px-5 py-2 rounded text-sm cursor-pointer transition-colors mt-2"
-            style={{ background: 'var(--color-accent-muted)', border: '1px solid var(--color-accent-muted)', color: 'var(--color-text-secondary)' }}
+            style={{ background: '#1a4a6a', border: '1px solid #1a4a6a', color: '#98aec9' }}
             onClick={() => this.setState({ hasError: false, error: null })}
           >
             重试
@@ -51,23 +51,23 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'var(--color-bg-deep)' }}>
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#0a0e1a' }}>
       {/* Sidebar */}
       <aside
         className="flex flex-col overflow-hidden transition-all duration-200 border-r"
         style={{
           width: collapsed ? 56 : 220,
           minWidth: collapsed ? 56 : 220,
-          background: 'var(--color-bg-deep)',
-          borderColor: 'var(--color-panel-border)',
+          background: '#0a0e1a',
+          borderColor: '#1a2640',
         }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-3.5 py-4 border-b min-h-[56px]" style={{ borderColor: 'var(--color-panel-border)' }}>
-          <span className="w-8 h-8 rounded flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{ background: 'linear-gradient(135deg, var(--color-accent-dim), var(--color-accent))' }}>
+        <div className="flex items-center gap-2.5 px-3.5 py-4 border-b min-h-[56px]" style={{ borderColor: '#1a2640' }}>
+          <span className="w-8 h-8 rounded flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{ background: 'linear-gradient(135deg, #0d47a1, #00d4ff)' }}>
             NY
           </span>
-          {!collapsed && <span className="text-[15px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-primary)' }}>宁扬城际</span>}
+          {!collapsed && <span className="text-[15px] font-semibold whitespace-nowrap" style={{ color: '#c8d6e5' }}>宁扬城际</span>}
         </div>
 
         {/* Nav */}
@@ -78,11 +78,11 @@ export default function AppLayout() {
               to={item.path}
               className={({ isActive }) =>
                 'flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] transition-all duration-150 whitespace-nowrap border-l-[3px] ' +
-                (isActive ? 'border-l-[var(--color-accent)]' : 'border-l-transparent')
+                (isActive ? 'border-l-[#00d4ff]' : 'border-l-transparent')
               }
               style={({ isActive }) => ({
-                color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                background: isActive ? 'var(--color-bg-hover)' : 'transparent',
+                color: isActive ? '#00d4ff' : '#98aec9',
+                background: isActive ? '#111e30' : 'transparent',
               })}
               title={item.label}
             >
@@ -95,7 +95,7 @@ export default function AppLayout() {
         {/* Toggle */}
         <button
           className="p-3 bg-transparent border-0 cursor-pointer text-xs transition-colors border-t"
-          style={{ color: 'var(--color-text-dim)', borderColor: 'var(--color-panel-border)' }}
+          style={{ color: '#5a6d8a', borderColor: '#1a2640' }}
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? '展开菜单' : '收起菜单'}
         >
@@ -106,10 +106,10 @@ export default function AppLayout() {
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <header className="px-6 py-2.5 border-b flex items-center justify-between min-h-[48px]" style={{ background: 'var(--color-bg-deep)', borderColor: 'var(--color-panel-border)' }}>
-          <h1 className="text-base font-semibold tracking-wide" style={{ color: 'var(--color-text-primary)' }}>宁扬城际施工监测与盾构研判平台</h1>
-          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-success)' }}>
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--color-success)', boxShadow: '0 0 6px rgba(46,125,50,0.5)' }} />
+        <header className="px-6 py-2.5 border-b flex items-center justify-between min-h-[48px]" style={{ background: '#0a0e1a', borderColor: '#1a2640' }}>
+          <h1 className="text-base font-semibold tracking-wide" style={{ color: '#c8d6e5' }}>宁扬城际施工监测与盾构研判平台</h1>
+          <div className="flex items-center gap-2 text-xs" style={{ color: '#2e7d32' }}>
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#2e7d32', boxShadow: '0 0 6px rgba(46,125,50,0.5)' }} />
             系统运行中
           </div>
         </header>

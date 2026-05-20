@@ -63,17 +63,17 @@ export default function CommandOverview() {
         {fetchError && (
           <span className="badge badge-warning text-xs">⚠ 部分接口连接异常</span>
         )}
-        <div className="flex items-center gap-4 ml-auto text-xs" style={{ color: "var(--color-text-dim)" }}>
+        <div className="flex items-center gap-4 ml-auto text-xs" style={{ color: "#5a6d8a" }}>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{ background: gnSys?.database_connected !== false ? "var(--color-success)" : "var(--color-danger)" }} />
+            <span className="w-2 h-2 rounded-full" style={{ background: gnSys?.database_connected !== false ? "#2e7d32" : "#e65100" }} />
             1工区后端
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{ background: a2Sys?.databaseConnected !== false ? "var(--color-success)" : "var(--color-danger)" }} />
+            <span className="w-2 h-2 rounded-full" style={{ background: a2Sys?.databaseConnected !== false ? "#2e7d32" : "#e65100" }} />
             2工区后端
           </span>
           <span>刷新 {refreshTime}</span>
-          <button onClick={load} className="px-3 py-1 rounded text-xs cursor-pointer transition-colors" style={{ background: "var(--color-accent-muted)", color: "var(--color-text-secondary)", border: "1px solid var(--color-accent-muted)" }}>
+          <button onClick={load} className="px-3 py-1 rounded text-xs cursor-pointer transition-colors" style={{ background: "#1a4a6a", color: "#98aec9", border: "1px solid #1a4a6a" }}>
             刷新
           </button>
         </div>
@@ -83,7 +83,7 @@ export default function CommandOverview() {
       <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {/* 1工区 */}
         <div className="card">
-          <h3 className="text-sm font-semibold mb-3 pb-2 border-b" style={{ color: "var(--color-text-muted)", borderColor: "var(--color-panel-border)" }}>
+          <h3 className="text-sm font-semibold mb-3 pb-2 border-b" style={{ color: "#6a7d9e", borderColor: "#1a2640" }}>
             1工区 · 工农路站基坑
           </h3>
           <div className="grid grid-cols-4 gap-3">
@@ -92,13 +92,13 @@ export default function CommandOverview() {
               const isHighlight = i === 2; // 超设计限值
               return (
                 <div key={i} className="text-center rounded p-3 transition-colors" style={{
-                  background: isHighlight ? "var(--color-danger-bg)" : "var(--color-bg-hover)",
-                  border: isHighlight ? "1px solid var(--color-danger-border)" : "1px solid var(--color-panel-border)",
+                  background: isHighlight ? "#2a0a0a" : "#111e30",
+                  border: isHighlight ? "1px solid #5a1a1a" : "1px solid #1a2640",
                 }}>
-                  <div className="text-xs mb-1" style={{ color: "var(--color-text-dim)" }}>{card.name || labels[i]}</div>
-                  <div className="font-bold" style={{ fontSize: "1.375rem", color: isHighlight ? "var(--color-danger)" : "var(--color-text-primary)" }}>
+                  <div className="text-xs mb-1" style={{ color: "#5a6d8a" }}>{card.name || labels[i]}</div>
+                  <div className="font-bold" style={{ fontSize: "1.375rem", color: isHighlight ? "#e65100" : "#c8d6e5" }}>
                     {card.value?.toLocaleString() ?? "-"}
-                    <span className="text-xs font-normal ml-0.5" style={{ color: "var(--color-text-dim)" }}>{card.unit || "个"}</span>
+                    <span className="text-xs font-normal ml-0.5" style={{ color: "#5a6d8a" }}>{card.unit || "个"}</span>
                   </div>
                 </div>
               );
@@ -108,7 +108,7 @@ export default function CommandOverview() {
 
         {/* 2工区 */}
         <div className="card">
-          <h3 className="text-sm font-semibold mb-3 pb-2 border-b" style={{ color: "var(--color-text-muted)", borderColor: "var(--color-panel-border)" }}>
+          <h3 className="text-sm font-semibold mb-3 pb-2 border-b" style={{ color: "#6a7d9e", borderColor: "#1a2640" }}>
             2工区 · 工~天盾构区间
           </h3>
           <div className="grid grid-cols-4 gap-3">
@@ -116,14 +116,14 @@ export default function CommandOverview() {
               const isHighlight = card.level === "alarm";
               return (
                 <div key={i} className="text-center rounded p-3 transition-colors" style={{
-                  background: isHighlight ? "var(--color-danger-bg)" : "var(--color-bg-hover)",
-                  border: isHighlight ? "1px solid var(--color-danger-border)" : "1px solid var(--color-panel-border)",
+                  background: isHighlight ? "#2a0a0a" : "#111e30",
+                  border: isHighlight ? "1px solid #5a1a1a" : "1px solid #1a2640",
                 }}>
-                  <div className="text-xs mb-1" style={{ color: "var(--color-text-dim)" }}>{card.title}</div>
-                  <div className="font-bold" style={{ fontSize: "1.375rem", color: isHighlight ? "var(--color-danger)" : "var(--color-text-primary)" }}>
+                  <div className="text-xs mb-1" style={{ color: "#5a6d8a" }}>{card.title}</div>
+                  <div className="font-bold" style={{ fontSize: "1.375rem", color: isHighlight ? "#e65100" : "#c8d6e5" }}>
                     {card.value}
                   </div>
-                  <div className="text-[10px] mt-0.5" style={{ color: "var(--color-text-dim)" }}>{card.subtitle}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "#5a6d8a" }}>{card.subtitle}</div>
                 </div>
               );
             })}
@@ -135,49 +135,49 @@ export default function CommandOverview() {
       <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "200px 1fr 1fr" }}>
         {/* 工程线路示意 */}
         <div className="card flex flex-col items-center justify-center gap-2 py-6">
-          <div className="text-xs font-semibold" style={{ color: "var(--color-accent)" }}>工程线路</div>
+          <div className="text-xs font-semibold" style={{ color: "#00d4ff" }}>工程线路</div>
           <div className="flex flex-col items-center gap-3 w-full">
-            <div className="text-center rounded px-3 py-2 w-full" style={{ background: "var(--color-bg-hover)", border: "1px solid var(--color-accent-muted)" }}>
-              <div className="text-xs font-semibold" style={{ color: "var(--color-text-primary)" }}>1工区</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>工农路站 · 基坑</div>
+            <div className="text-center rounded px-3 py-2 w-full" style={{ background: "#111e30", border: "1px solid #1a4a6a" }}>
+              <div className="text-xs font-semibold" style={{ color: "#c8d6e5" }}>1工区</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>工农路站 · 基坑</div>
             </div>
-            <div className="w-0.5 h-8" style={{ background: "var(--color-panel-border)" }} />
-            <div className="text-center rounded px-3 py-2 w-full" style={{ background: "var(--color-bg-hover)", border: "1px solid var(--color-accent-muted)" }}>
-              <div className="text-xs font-semibold" style={{ color: "var(--color-text-primary)" }}>2工区</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>
+            <div className="w-0.5 h-8" style={{ background: "#1a2640" }} />
+            <div className="text-center rounded px-3 py-2 w-full" style={{ background: "#111e30", border: "1px solid #1a4a6a" }}>
+              <div className="text-xs font-semibold" style={{ color: "#c8d6e5" }}>2工区</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>
                 工~天区间 · 环号{a2Overview?.position?.currentRing || "-"}
               </div>
             </div>
-            <div className="w-0.5 h-8" style={{ background: "var(--color-panel-border)" }} />
-            <div className="text-center rounded px-3 py-2 w-full opacity-50" style={{ background: "var(--color-bg-hover)", border: "1px dashed var(--color-panel-border)" }}>
-              <div className="text-xs" style={{ color: "var(--color-text-dim)" }}>后续工区</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>暂未接入</div>
+            <div className="w-0.5 h-8" style={{ background: "#1a2640" }} />
+            <div className="text-center rounded px-3 py-2 w-full opacity-50" style={{ background: "#111e30", border: "1px dashed #1a2640" }}>
+              <div className="text-xs" style={{ color: "#5a6d8a" }}>后续工区</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>暂未接入</div>
             </div>
           </div>
         </div>
 
         {/* 1工区 研判结论 */}
         <div className="card card-warning">
-          <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--color-warning)" }}>1工区研判</h3>
+          <h3 className="text-sm font-semibold mb-2" style={{ color: "#d4a050" }}>1工区研判</h3>
           <div className="flex gap-3 mb-3">
-            <div className="flex-1 text-center rounded p-2" style={{ background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)" }}>
-              <div className="text-lg font-bold" style={{ color: "var(--color-danger)" }}>{gnCards[2]?.value ?? "-"}</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>超设计限值</div>
+            <div className="flex-1 text-center rounded p-2" style={{ background: "#2a0a0a", border: "1px solid #5a1a1a" }}>
+              <div className="text-lg font-bold" style={{ color: "#e65100" }}>{gnCards[2]?.value ?? "-"}</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>超设计限值</div>
             </div>
-            <div className="flex-1 text-center rounded p-2" style={{ background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)" }}>
-              <div className="text-lg font-bold" style={{ color: "var(--color-warning)" }}>{gnCards[3]?.value ?? "-"}</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>待确认</div>
+            <div className="flex-1 text-center rounded p-2" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
+              <div className="text-lg font-bold" style={{ color: "#d4a050" }}>{gnCards[3]?.value ?? "-"}</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>待确认</div>
             </div>
-            <div className="flex-1 text-center rounded p-2" style={{ background: "var(--color-bg-hover)", border: "1px solid var(--color-panel-border)" }}>
-              <div className="text-lg font-bold" style={{ color: "var(--color-text-primary)" }}>{gnFindings.length}</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>重点复核</div>
+            <div className="flex-1 text-center rounded p-2" style={{ background: "#111e30", border: "1px solid #1a2640" }}>
+              <div className="text-lg font-bold" style={{ color: "#c8d6e5" }}>{gnFindings.length}</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>重点复核</div>
             </div>
           </div>
           {gnFindings.length > 0 && (
             <div className="flex flex-col gap-1.5 mb-2">
               {gnFindings.slice(0, 3).map((f, i) => (
-                <div key={i} className="text-xs flex items-start gap-2" style={{ color: "var(--color-text-secondary)" }}>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] text-white whitespace-nowrap opacity-90" style={{ background: "var(--color-accent)" }}>
+                <div key={i} className="text-xs flex items-start gap-2" style={{ color: "#98aec9" }}>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] text-white whitespace-nowrap opacity-90" style={{ background: "#00d4ff" }}>
                     关注
                   </span>
                   <span>{String(f.point_code || "")} {String(f.monitoring_item || "")}: {String(f.summary || f.reason || "")}</span>
@@ -186,35 +186,35 @@ export default function CommandOverview() {
             </div>
           )}
           {gnOverview?.headline && (
-            <p className="text-xs mt-2" style={{ color: "var(--color-text-muted)" }}>{gnOverview.headline}</p>
+            <p className="text-xs mt-2" style={{ color: "#6a7d9e" }}>{gnOverview.headline}</p>
           )}
         </div>
 
         {/* 2工区 研判结论 */}
-        <div className="card" style={{ borderLeftColor: LEVEL_COLORS[a2Level] || "var(--color-accent-muted)" }}>
-          <h3 className="text-sm font-semibold mb-2" style={{ color: LEVEL_COLORS[a2Level] || "var(--color-accent)" }}>2工区研判</h3>
+        <div className="card" style={{ borderLeftColor: LEVEL_COLORS[a2Level] || "#1a4a6a" }}>
+          <h3 className="text-sm font-semibold mb-2" style={{ color: LEVEL_COLORS[a2Level] || "#00d4ff" }}>2工区研判</h3>
           <div className="flex gap-3 mb-3">
-            <div className="flex-1 text-center rounded p-2" style={{ background: "var(--color-bg-hover)", border: "1px solid var(--color-panel-border)" }}>
-              <div className="text-lg font-bold" style={{ color: "var(--color-text-primary)" }}>{a2Overview?.position?.currentRing || "-"}</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>当前环号</div>
+            <div className="flex-1 text-center rounded p-2" style={{ background: "#111e30", border: "1px solid #1a2640" }}>
+              <div className="text-lg font-bold" style={{ color: "#c8d6e5" }}>{a2Overview?.position?.currentRing || "-"}</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>当前环号</div>
             </div>
-            <div className="flex-1 text-center rounded p-2" style={{ background: "var(--color-bg-hover)", border: "1px solid var(--color-panel-border)" }}>
-              <div className="text-lg font-bold" style={{ color: "var(--color-text-primary)" }}>243k</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>参数条数</div>
+            <div className="flex-1 text-center rounded p-2" style={{ background: "#111e30", border: "1px solid #1a2640" }}>
+              <div className="text-lg font-bold" style={{ color: "#c8d6e5" }}>243k</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>参数条数</div>
             </div>
-            <div className="flex-1 text-center rounded p-2" style={{ background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)" }}>
-              <div className="text-lg font-bold" style={{ color: "var(--color-warning)" }}>待确认</div>
-              <div className="text-[10px]" style={{ color: "var(--color-text-dim)" }}>监测状态</div>
+            <div className="flex-1 text-center rounded p-2" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
+              <div className="text-lg font-bold" style={{ color: "#d4a050" }}>待确认</div>
+              <div className="text-[10px]" style={{ color: "#5a6d8a" }}>监测状态</div>
             </div>
           </div>
           {a2Headline && (
-            <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>{a2Headline}</p>
+            <p className="text-xs mb-2" style={{ color: "#98aec9" }}>{a2Headline}</p>
           )}
           {a2Findings.slice(0, 2).map((f, i) => {
             const fr = f as Record<string, unknown>;
             return (
-              <div key={i} className="text-xs flex items-start gap-2 mt-1" style={{ color: "var(--color-text-secondary)" }}>
-                <span className="px-1.5 py-0.5 rounded text-[10px] text-white whitespace-nowrap opacity-90" style={{ background: LEVEL_COLORS[String(fr.level || "caution")] || "var(--color-accent)" }}>
+              <div key={i} className="text-xs flex items-start gap-2 mt-1" style={{ color: "#98aec9" }}>
+                <span className="px-1.5 py-0.5 rounded text-[10px] text-white whitespace-nowrap opacity-90" style={{ background: LEVEL_COLORS[String(fr.level || "caution")] || "#00d4ff" }}>
                   {LEVEL_LABELS[String(fr.level || "")] || "注意"}
                 </span>
                 <span>{String(fr.message || fr.description || fr.title || "")}</span>
@@ -228,13 +228,13 @@ export default function CommandOverview() {
       <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {/* 1工区 建议动作 */}
         <div className="card card-accent">
-          <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-accent)" }}>→ 1工区建议动作</h3>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: "#00d4ff" }}>→ 1工区建议动作</h3>
           <div className="flex flex-col gap-1.5">
             {(gnActions.length > 0 ? gnActions : [{ priority: "1", description: "人工复核重点超标记录" }, { priority: "2", description: "补充DSW13地下水位人工复核结论" }]).slice(0, 3).map((a, i) => {
               const ar = a as Record<string, unknown>;
               return (
-                <div key={i} className="flex items-start gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  <span style={{ color: "var(--color-accent)", fontWeight: 700 }}>{i + 1}.</span>
+                <div key={i} className="flex items-start gap-2 text-xs" style={{ color: "#98aec9" }}>
+                  <span style={{ color: "#00d4ff", fontWeight: 700 }}>{i + 1}.</span>
                   <span>{String(ar.description || "")}</span>
                 </div>
               );
@@ -244,7 +244,7 @@ export default function CommandOverview() {
 
         {/* 2工区 建议动作 */}
         <div className="card card-accent">
-          <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-accent)" }}>→ 2工区建议动作</h3>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: "#00d4ff" }}>→ 2工区建议动作</h3>
           <div className="flex flex-col gap-1.5">
             {(a2Actions.length > 0 ? a2Actions : [
               { priority: "P1", description: "从监测方案补充正式设计限值/预警值/报警值,替换当前统计阈值" },
@@ -252,8 +252,8 @@ export default function CommandOverview() {
             ]).slice(0, 3).map((a, i) => {
               const ar = a as Record<string, unknown>;
               return (
-                <div key={i} className="flex items-start gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  <span style={{ color: "var(--color-accent)", fontWeight: 700 }}>{i + 1}.</span>
+                <div key={i} className="flex items-start gap-2 text-xs" style={{ color: "#98aec9" }}>
+                  <span style={{ color: "#00d4ff", fontWeight: 700 }}>{i + 1}.</span>
                   <span>{String(ar.description || "")}</span>
                 </div>
               );
@@ -266,14 +266,14 @@ export default function CommandOverview() {
       <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {gnGaps.length > 0 && (
           <div className="card">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-text-muted)" }}>1工区数据缺口</h3>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: "#6a7d9e" }}>1工区数据缺口</h3>
             <div className="flex flex-wrap gap-2">
               {gnGaps.slice(0, 4).map((g, i) => {
                 const gr = g as Record<string, unknown>;
                 return (
-                  <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)" }}>
-                    <span className="font-semibold" style={{ color: "var(--color-warning)" }}>{String(gr.category || gr.field || "")}</span>
-                    <span className="ml-2" style={{ color: "var(--color-text-dim)" }}>{String(gr.reason || gr.detail || "")}</span>
+                  <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
+                    <span className="font-semibold" style={{ color: "#d4a050" }}>{String(gr.category || gr.field || "")}</span>
+                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{String(gr.reason || gr.detail || "")}</span>
                   </div>
                 );
               })}
@@ -282,14 +282,14 @@ export default function CommandOverview() {
         )}
         {a2Gaps.length > 0 && (
           <div className="card">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-text-muted)" }}>2工区数据缺口</h3>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: "#6a7d9e" }}>2工区数据缺口</h3>
             <div className="flex flex-wrap gap-2">
               {a2Gaps.slice(0, 4).map((g, i) => {
                 const gr = g as Record<string, unknown>;
                 return (
-                  <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)" }}>
-                    <span className="font-semibold" style={{ color: "var(--color-warning)" }}>{String(gr.category || gr.field || "")}</span>
-                    <span className="ml-2" style={{ color: "var(--color-text-dim)" }}>{String(gr.reason || gr.detail || "")}</span>
+                  <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
+                    <span className="font-semibold" style={{ color: "#d4a050" }}>{String(gr.category || gr.field || "")}</span>
+                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{String(gr.reason || gr.detail || "")}</span>
                   </div>
                 );
               })}
