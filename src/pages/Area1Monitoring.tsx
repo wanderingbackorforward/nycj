@@ -46,14 +46,14 @@ export default function Area1Monitoring() {
     const top = items.slice(0, 12);
     barInst.current.setOption({
       backgroundColor: "transparent",
-      tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { top: 0, textStyle: { color: "#7a8ba8", fontSize: 10 } },
+      tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 } },
+      legend: { top: 0, textStyle: { color: "var(--color-text-secondary)", fontSize: 10 } },
       grid: { left: 50, right: 20, top: 30, bottom: 70 },
-      xAxis: { type: "category", data: top.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 40 }, axisLine: { lineStyle: { color: "#1a2845" } } },
-      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 11 }, splitLine: { lineStyle: { color: "#121e36" } } },
+      xAxis: { type: "category", data: top.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "var(--color-text-dim)", fontSize: 10, rotate: 40 }, axisLine: { lineStyle: { color: "var(--color-panel-border)" } } },
+      yAxis: { type: "value", axisLabel: { color: "var(--color-text-dim)", fontSize: 11 }, splitLine: { lineStyle: { color: "var(--color-bg-grid)" } } },
       series: [
-        { name: "正常", type: "bar", data: top.map(i => i.normal_count || 0), stack: "total", itemStyle: { color: "#2e7d32" }, barWidth: 24 },
-        { name: "超限", type: "bar", data: top.map(i => i.exceed_count || 0), stack: "total", itemStyle: { color: "#e65100" } },
+        { name: "正常", type: "bar", data: top.map(i => i.normal_count || 0), stack: "total", itemStyle: { color: "var(--color-success)" }, barWidth: 24 },
+        { name: "超限", type: "bar", data: top.map(i => i.exceed_count || 0), stack: "total", itemStyle: { color: "var(--color-danger)" } },
         { name: "待确认", type: "bar", data: top.map(i => i.unknown_count || 0), stack: "total", itemStyle: { color: "#7a6a2a" } },
       ],
     }, true);
@@ -66,16 +66,16 @@ export default function Area1Monitoring() {
   useEffect(() => {
     if (!pieRef.current || !overview?.status_distribution) return;
     if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
-    const colors: Record<string, string> = { normal: "#2e7d32", exceed_design_limit: "#e65100", unknown: "#7a6a2a" };
+    const colors: Record<string, string> = { normal: "var(--color-success)", exceed_design_limit: "var(--color-danger)", unknown: "#7a6a2a" };
     pieInst.current.setOption({
       backgroundColor: "transparent",
-      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#7a8ba8", fontSize: 10 } },
+      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 } },
+      legend: { bottom: 0, textStyle: { color: "var(--color-text-secondary)", fontSize: 10 } },
       series: [{
         type: "pie", radius: ["40%", "65%"], center: ["50%", "45%"],
-        data: overview.status_distribution.map(s => ({ name: s.status_display_cn || s.status_code, value: s.count, itemStyle: { color: colors[s.status_code] || "#5a6d8a" } })),
-        label: { color: "#8a9bb5", fontSize: 10 },
-        itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 },
+        data: overview.status_distribution.map(s => ({ name: s.status_display_cn || s.status_code, value: s.count, itemStyle: { color: colors[s.status_code] || "var(--color-text-dim)" } })),
+        label: { color: "var(--color-text-secondary)", fontSize: 10 },
+        itemStyle: { borderColor: "var(--color-bg-deep)", borderWidth: 2 },
       }],
     }, true);
     const h = () => pieInst.current?.resize();
@@ -94,19 +94,19 @@ export default function Area1Monitoring() {
       backgroundColor: "transparent",
       tooltip: {
         trigger: "axis",
-        backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 },
+        backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 },
         formatter: (p: { name: string; value: number; data: { designLimit: number; cumulative: number; current: number } }[]) => {
           const d = p[0].data;
           return p[0].name + "<br/>累计变化: " + (d.cumulative ?? "-") + " | 设计限值: " + (d.designLimit ?? "-") + "<br/>当前值: " + (d.current ?? "-");
         }
       },
       grid: { left: 140, right: 80, top: 10, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#121e36" } }, name: "超限倍数", nameTextStyle: { color: "#5a6d8a", fontSize: 10 } },
+      xAxis: { type: "value", axisLabel: { color: "var(--color-text-dim)", fontSize: 10, formatter: "{value}x" }, splitLine: { lineStyle: { color: "var(--color-bg-grid)" } }, name: "超限倍数", nameTextStyle: { color: "var(--color-text-dim)", fontSize: 10 } },
       yAxis: {
         type: "category",
         data: exceedAlerts.map(a => (a.point_code || "") + " " + (a.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")),
-        axisLabel: { color: "#8a9bb5", fontSize: 10, width: 130, overflow: "truncate" },
-        axisLine: { lineStyle: { color: "#1a2845" } },
+        axisLabel: { color: "var(--color-text-secondary)", fontSize: 10, width: 130, overflow: "truncate" },
+        axisLine: { lineStyle: { color: "var(--color-panel-border)" } },
       },
       series: [{
         type: "bar",
@@ -115,8 +115,8 @@ export default function Area1Monitoring() {
           return { value: Math.round(ratio * 10) / 10, designLimit: a.design_limit, cumulative: a.cumulative_change, current: a.current_value };
         }),
         barWidth: 18,
-        itemStyle: { borderRadius: [0, 3, 3, 0], color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{offset:0,color:"#e65100"},{offset:1,color:"#ff8c42"}]) },
-        label: { show: true, position: "right", color: "#ff8c42", fontSize: 10, formatter: "{c}x" },
+        itemStyle: { borderRadius: [0, 3, 3, 0], color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{offset:0,color:"var(--color-danger)"},{offset:1,color:"var(--color-danger)"}]) },
+        label: { show: true, position: "right", color: "var(--color-danger)", fontSize: 10, formatter: "{c}x" },
         markLine: { silent: true, symbol: "none", data: [{ xAxis: 1, lineStyle: { color: "#5a4a2a", type: "dashed" }, label: { formatter: "设计限值", color: "#5a4a2a", fontSize: 10 } }] },
       }],
     }, true);
@@ -135,16 +135,16 @@ export default function Area1Monitoring() {
       reviewCounts[lvl] = (reviewCounts[lvl] || 0) + 1;
     }
     const levelNames: Record<string, string> = { priority: "重点复核", routine: "常规复核", unspecified: "未指定", low: "低优先" };
-    const levelColors: Record<string, string> = { priority: "#e65100", routine: "#1565c0", unspecified: "#5a6d8a", low: "#2e7d32" };
+    const levelColors: Record<string, string> = { priority: "var(--color-danger)", routine: "var(--color-accent)", unspecified: "var(--color-text-dim)", low: "var(--color-success)" };
     reviewInst.current.setOption({
       backgroundColor: "transparent",
-      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#7a8ba8", fontSize: 10 } },
+      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "var(--color-panel-border)", textStyle: { color: "var(--color-text-primary)", fontSize: 12 } },
+      legend: { bottom: 0, textStyle: { color: "var(--color-text-secondary)", fontSize: 10 } },
       series: [{
         type: "pie", radius: ["45%", "70%"], center: ["50%", "45%"],
-        data: Object.entries(reviewCounts).map(([k, v]) => ({ name: levelNames[k] || k, value: v, itemStyle: { color: levelColors[k] || "#5a6d8a" } })),
-        label: { color: "#8a9bb5", fontSize: 10 },
-        itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 },
+        data: Object.entries(reviewCounts).map(([k, v]) => ({ name: levelNames[k] || k, value: v, itemStyle: { color: levelColors[k] || "var(--color-text-dim)" } })),
+        label: { color: "var(--color-text-secondary)", fontSize: 10 },
+        itemStyle: { borderColor: "var(--color-bg-deep)", borderWidth: 2 },
       }],
     }, true);
     const h = () => reviewInst.current?.resize();
@@ -168,7 +168,7 @@ export default function Area1Monitoring() {
     <div className="page-area1-monitoring">
       <h2 className="page-title">1工区基坑监测</h2>
       <p className="page-desc">工农路站主体基坑施工监测，含地表、建筑物、管线、桩顶、支撑、地下水、深层水平位移。</p>
-      {dbDown && <div className="page-warning-banner" style={{background:"#2a0a0a",border:"1px solid #5a1a1a",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⛔ 数据库连接异常。"}</div>}
+      {dbDown && <div className="page-warning-banner" style={{background:"var(--color-danger-bg)",border:"1px solid var(--color-danger-border)",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⛔ 数据库连接异常。"}</div>}
 
       {/* ======== Row 1: 状态卡片 ======== */}
       <section className="status-cards-row">
@@ -184,26 +184,26 @@ export default function Area1Monitoring() {
 
       {/* ======== Row 2: 监测项目堆叠柱状图 + 状态饼图 ======== */}
       <section style={{display:"flex", gap:16, marginBottom:16}}>
-        <div style={{flex:1.5, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>监测项目分布（堆叠柱状）</h4>
+        <div style={{flex:1.5, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
+          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>监测项目分布（堆叠柱状）</h4>
           <div ref={barRef} style={{height:280}} />
         </div>
-        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>状态分布</h4>
+        <div style={{flex:1, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
+          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>状态分布</h4>
           <div ref={pieRef} style={{height:280}} />
         </div>
       </section>
 
       {/* ======== Row 3: 超限横向柱状图 + 复核级别环形图 ======== */}
       <section style={{display:"flex", gap:16, marginBottom:16}}>
-        <div style={{flex:1.5, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>超设计限值 Top10（横轴=超限倍数）</h4>
-          <p style={{color:"#4a5a6e", fontSize:11, marginBottom:4}}>虚线=设计限值线(1x)；悬停查看累计变化与当前值</p>
-          {exceedAlerts.length === 0 && <div style={{height:200, display:"flex", alignItems:"center", justifyContent:"center", color:"#5a6d8a"}}>暂无超设计限值数据</div>}
+        <div style={{flex:1.5, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
+          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>超设计限值 Top10（横轴=超限倍数）</h4>
+          <p style={{color:"var(--color-text-dim)", fontSize:11, marginBottom:4}}>虚线=设计限值线(1x)；悬停查看累计变化与当前值</p>
+          {exceedAlerts.length === 0 && <div style={{height:200, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--color-text-dim)"}}>暂无超设计限值数据</div>}
           <div ref={exceedBarRef} style={{height: Math.max(200, exceedAlerts.slice(0,10).length * 32)}} />
         </div>
-        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>复核级别分布</h4>
+        <div style={{flex:1, background:"var(--color-panel)", border:"1px solid var(--color-panel-border)", borderRadius:6, padding:12}}>
+          <h4 style={{color:"var(--color-text-muted)", fontSize:13, marginBottom:4}}>复核级别分布</h4>
           <div ref={reviewPieRef} style={{height:240}} />
         </div>
       </section>
@@ -211,24 +211,24 @@ export default function Area1Monitoring() {
       {/* ======== Row 4: 重点发现（图表化卡片） ======== */}
       {priorityFindings.length > 0 && (
         <section style={{marginBottom:16}}>
-          <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:10}}>重点发现（{priorityFindings.length} 条）</h3>
+          <h3 style={{color:"var(--color-text-muted)", fontSize:14, marginBottom:10}}>重点发现（{priorityFindings.length} 条）</h3>
           <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
             {priorityFindings.slice(0, 6).map((f, i) => (
               <div key={i} style={{
-                background: f.level === "critical" ? "#1a1010" : "#0f1525",
-                border: "1px solid " + (f.level === "critical" ? "#5a1a1a" : "#1a2640"),
-                borderLeft: "4px solid " + (f.level === "critical" ? "#e65100" : "#1565c0"),
+                background: f.level === "critical" ? "var(--color-danger-bg)" : "var(--color-panel)",
+                border: "1px solid " + (f.level === "critical" ? "var(--color-danger-border)" : "var(--color-panel-border)"),
+                borderLeft: "4px solid " + (f.level === "critical" ? "var(--color-danger)" : "var(--color-accent)"),
                 borderRadius: 4, padding: "12px 14px",
               }}>
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4}}>
                   <span style={{
                     fontSize:10, fontWeight:600, padding:"2px 6px", borderRadius:2, color:"#fff",
-                    background: f.level === "critical" ? "#e65100" : "#1565c0",
+                    background: f.level === "critical" ? "var(--color-danger)" : "var(--color-accent)",
                   }}>{f.level === "critical" ? "! 重点" : "i 关注"}</span>
-                  <span style={{fontSize:10, color:"#5a6d8a"}}>#{i+1}</span>
+                  <span style={{fontSize:10, color:"var(--color-text-dim)"}}>#{i+1}</span>
                 </div>
-                <div style={{fontSize:13, fontWeight:600, color:"#c8d6e5", marginBottom:3}}>{f.title}</div>
-                <div style={{fontSize:11, color:"#8a9bb5", lineHeight:1.5}}>{f.detail}</div>
+                <div style={{fontSize:13, fontWeight:600, color:"var(--color-text-primary)", marginBottom:3}}>{f.title}</div>
+                <div style={{fontSize:11, color:"var(--color-text-secondary)", lineHeight:1.5}}>{f.detail}</div>
               </div>
             ))}
           </div>
