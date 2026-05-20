@@ -295,7 +295,6 @@ export default function Area1Monitoring() {
           )}
         </section>
       )}
-      {old_note}
       <div className="mon-status-note">
         <strong>提示：</strong>DSW13 地下水位需人工复核。页面不将「超设计限值」称为「报警」——超限仅表示超过设计参考值，最终判定需结合现场工况。
       </div>

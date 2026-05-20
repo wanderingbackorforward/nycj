@@ -4,6 +4,7 @@ import { fetchArea2Overview, fetchArea2SystemStatus, fetchArea2AnalyticsOverview
 import type { GnOverview, GnSystemStatus, GnDailyBriefing } from "../api/area1";
 import type { Area2Overview, Area2SystemStatus, Area2AnalyticsOverview } from "../api/area2";
 import LoadingState from "../components/status/LoadingState";
+import { cn, cnField } from "../utils/cnMap";
 
 // 中文映射
 const LEVEL_COLORS: Record<string, string> = {
@@ -28,7 +29,7 @@ export default function CommandOverview() {
     setLoading(true);
     try {
       const [gnO, gnS, a2O, a2S, a2AnalyticsR, gnBriefingR] = await Promise.all([
-        fetchGnOverview("date=2026-04-14"),
+        fetchGnOverview("2026-04-14"),
         fetchGnSystemStatus(),
         fetchArea2Overview(),
         fetchArea2SystemStatus(),
@@ -223,7 +224,7 @@ export default function CommandOverview() {
                 <span className="px-1.5 py-0.5 rounded text-[10px] text-white whitespace-nowrap opacity-90" style={{ background: LEVEL_COLORS[String(fr.level || "caution")] || "#00d4ff" }}>
                   {LEVEL_LABELS[String(fr.level || "")] || "注意"}
                 </span>
-                <span>{String(fr.message || fr.description || fr.title || "")}</span>
+                <span>{cn(String(fr.message || fr.description || fr.title || ""))}</span>
               </div>
             );
           })}
@@ -348,8 +349,8 @@ export default function CommandOverview() {
                 const gr = g as Record<string, unknown>;
                 return (
                   <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-                    <span className="font-semibold" style={{ color: "#d4a050" }}>{String(gr.category || gr.field || "")}</span>
-                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{String(gr.reason || gr.detail || "")}</span>
+                    <span className="font-semibold" style={{ color: "#d4a050" }}>{cnField(String(gr.category || gr.field || ""))}</span>
+                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{cnField(String(gr.reason || gr.detail || ""))}</span>
                   </div>
                 );
               })}
@@ -364,8 +365,8 @@ export default function CommandOverview() {
                 const gr = g as Record<string, unknown>;
                 return (
                   <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-                    <span className="font-semibold" style={{ color: "#d4a050" }}>{String(gr.category || gr.field || "")}</span>
-                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{String(gr.reason || gr.detail || "")}</span>
+                    <span className="font-semibold" style={{ color: "#d4a050" }}>{cnField(String(gr.category || gr.field || ""))}</span>
+                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{cnField(String(gr.reason || gr.detail || ""))}</span>
                   </div>
                 );
               })}

@@ -7,6 +7,7 @@ import {
   fetchArea2MonitoringSummary,
 } from "../api/area2";
 import type { Area2DiagnosisSlurryGrouting, Area2MonitoringSummary } from "../api/area2";
+import { cnField } from "../utils/cnMap";
 
 export default function Area2SlurryGrouting() {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -180,7 +181,7 @@ export default function Area2SlurryGrouting() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {Array.isArray(gaps) && gaps.length > 0 ? (gaps as Array<Record<string, unknown>>).map((g, i) => (
             <div key={i} style={{ flex: "1 1 200px", background: "#1a1210", border: "1px solid #5a3a1a", borderRadius: 4, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: "#d4a050", fontWeight: 600, marginBottom: 4 }}>{String((g as Record<string,unknown>).field || (g as Record<string,unknown>).category || "未知")}</div>
+              <div style={{ fontSize: 11, color: "#d4a050", fontWeight: 600, marginBottom: 4 }}>{cnField(String((g as Record<string,unknown>).field || (g as Record<string,unknown>).category))}</div>
               <div style={{ fontSize: 11, color: "#8a6d5a", marginBottom: 4 }}>{String((g as Record<string,unknown>).reason || (g as Record<string,unknown>).detail || "")}</div>
             </div>
           )) : [
