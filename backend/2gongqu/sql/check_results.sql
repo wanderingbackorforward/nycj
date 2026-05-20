@@ -1,0 +1,11 @@
+﻿SET search_path TO shield_area2, public;
+SELECT '=== monitoring status ===' AS step;
+SELECT status_code, COUNT(*) FROM shield_monitoring_reading WHERE reading_role='analysis_primary' GROUP BY status_code ORDER BY 2 DESC;
+SELECT '=== monitoring ALL status ===' AS step;
+SELECT status_code, COUNT(*) FROM shield_monitoring_reading GROUP BY status_code ORDER BY 2 DESC;
+SELECT '=== tunneling status ===' AS step;
+SELECT status_code, COUNT(*) FROM shield_tunneling_parameter WHERE value IS NOT NULL GROUP BY status_code ORDER BY 2 DESC;
+SELECT '=== monitoring thresholds ===' AS step;
+SELECT monitoring_item, design_limit_upper, warning_threshold, alarm_threshold, rate_warning, rate_alarm, sample_count FROM shield_threshold_config WHERE target_type='monitoring' ORDER BY sample_count DESC;
+SELECT '=== tunneling thresholds top 15 ===' AS step;
+SELECT parameter_group, parameter_name_cn, design_limit_lower, design_limit_upper, sample_count FROM shield_threshold_config WHERE target_type='tunneling_parameter' ORDER BY sample_count DESC LIMIT 20;
