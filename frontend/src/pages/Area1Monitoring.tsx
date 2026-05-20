@@ -21,9 +21,9 @@ export default function Area1Monitoring() {
   const [overview, setOverview] = useState<GnOverview | null>(null);
   const [items, setItems] = useState<GnMonitoringItem[]>([]);
   const [alerts, setAlerts] = useState<GnAlert[]>([]);
-  const [anomaly, setAnomaly] = useState<GnAnomalyResponse | null>(null);
-  const [heatmap, setHeatmap] = useState<GnZoneHeatmapResponse | null>(null);
-  const [crossCorr, setCrossCorr] = useState<GnCrossCorrelationResponse | null>(null);
+  const [anomaly, setAnomaly] = useState<GnAnomalyResponse|null>(null);
+  const [heatmap, setHeatmap] = useState<GnZoneHeatmapResponse|null>(null);
+  const [crossCorr, setCrossCorr] = useState<GnCrossCorrelationResponse|null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
