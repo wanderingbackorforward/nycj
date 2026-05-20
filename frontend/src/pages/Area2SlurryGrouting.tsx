@@ -175,28 +175,6 @@ export default function Area2SlurryGrouting() {
         </section>
       )}
 
-      {/* ====== 数据缺口 ====== */}
-      <section style={{ marginBottom: 0, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 14 }}>
-        <h3 style={{ color: "#6a7d9e", fontSize: 14, marginBottom: 8 }}>数据缺口</h3>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {Array.isArray(gaps) && gaps.length > 0 ? (gaps as Array<Record<string, unknown>>).map((g, i) => (
-            <div key={i} style={{ flex: "1 1 200px", background: "#1a1210", border: "1px solid #5a3a1a", borderRadius: 4, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: "#d4a050", fontWeight: 600, marginBottom: 4 }}>{cnField(String((g as Record<string,unknown>).field || (g as Record<string,unknown>).category))}</div>
-              <div style={{ fontSize: 11, color: "#8a6d5a", marginBottom: 4 }}>{String((g as Record<string,unknown>).reason || (g as Record<string,unknown>).detail || "")}</div>
-            </div>
-          )) : [
-            { cat: "泥水环流", detail: "缺少进出泥流量、密度、压力等完整环流参数", action: "接入PLC泥水环流数据" },
-            { cat: "土压参考值", detail: "土压传感器读数缺少设计土压设定范围作为参考", action: "补充设计土压控制范围" },
-            { cat: "注浆-沉降关联", detail: "注浆量数据与监测沉降数据未做时空关联分析", action: "按环号对齐注浆量与对应里程沉降" },
-          ].map((g, i) => (
-            <div key={i} style={{ flex: "1 1 200px", background: "#1a1210", border: "1px solid #5a3a1a", borderRadius: 4, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: "#d4a050", fontWeight: 600, marginBottom: 4 }}>{g.cat}</div>
-              <div style={{ fontSize: 11, color: "#8a6d5a", marginBottom: 4 }}>{g.detail}</div>
-              <div style={{ fontSize: 10, color: "#5a4a2a" }}>→ {g.action}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
+          </div>
   );
 }

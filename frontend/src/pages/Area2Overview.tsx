@@ -340,7 +340,7 @@ export default function Area2Overview() {
       )}
 
       {/* 数据缺口 */}
-      {overview?.dataGaps && overview.dataGaps.length > 0 && (
+      {false && overview?.dataGaps && (
         <section style={{ marginBottom: 0, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 12 }}>
           <h4 style={{ color: "#6a7d9e", fontSize: 13, marginBottom: 6 }}>数据缺口</h4>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

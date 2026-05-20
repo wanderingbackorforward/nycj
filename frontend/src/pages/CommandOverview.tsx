@@ -58,9 +58,7 @@ export default function CommandOverview() {
   const a2Findings = a2Overview?.findings || [];
   const a2Headline = a2Overview?.headline || "";
   const a2Level = a2Overview?.overallLevel || "normal";
-  const gnGaps = gnOverview?.data_gaps || [];
-  const a2Gaps = a2Overview?.dataGaps || [];
-  const gnActions = gnOverview?.actions || [];
+      const gnActions = gnOverview?.actions || [];
   const a2Actions = a2Overview?.actions || [];
 
   return (
@@ -339,41 +337,6 @@ export default function CommandOverview() {
         </div>
       </div>
 
-      {/* ====== Row 4: Data gaps ====== */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        {gnGaps.length > 0 && (
-          <div className="card">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "#6a7d9e" }}>1工区数据缺口</h3>
-            <div className="flex flex-wrap gap-2">
-              {gnGaps.slice(0, 4).map((g, i) => {
-                const gr = g as Record<string, unknown>;
-                return (
-                  <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-                    <span className="font-semibold" style={{ color: "#d4a050" }}>{cnField(String(gr.category || gr.field || ""))}</span>
-                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{cnField(String(gr.reason || gr.detail || ""))}</span>
-                  </div>
-                );
-              })}
-            </div>
           </div>
-        )}
-        {a2Gaps.length > 0 && (
-          <div className="card">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "#6a7d9e" }}>2工区数据缺口</h3>
-            <div className="flex flex-wrap gap-2">
-              {a2Gaps.slice(0, 4).map((g, i) => {
-                const gr = g as Record<string, unknown>;
-                return (
-                  <div key={i} className="rounded px-2.5 py-1.5 text-[11px]" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-                    <span className="font-semibold" style={{ color: "#d4a050" }}>{cnField(String(gr.category || gr.field || ""))}</span>
-                    <span className="ml-2" style={{ color: "#5a6d8a" }}>{cnField(String(gr.reason || gr.detail || ""))}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

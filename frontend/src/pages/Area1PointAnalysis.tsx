@@ -275,7 +275,7 @@ export default function Area1PointAnalysis() {
           })}
         </div>
       )}
-      {analysis?.data_gaps && analysis.data_gaps.length > 0 && (
+      {false && analysis?.data_gaps && (
         <section style={{marginBottom:14}}>
           <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:6}}>数据缺口</h3>
           <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
