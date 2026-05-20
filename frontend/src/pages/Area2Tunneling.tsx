@@ -33,7 +33,6 @@ export default function Area2Tunneling() {
   const [paramsLoading, setParamsLoading] = useState(false);
   const [postureReady, setPostureReady] = useState(0);
   const [ringMileage, setRingMileage] = useState<Record<number, string>>({});
-  const [ringMileage, setRingMileage] = useState<Record<number, string>>({});
 
   // ---- 加载分组列表 ----
   const loadGroups = useCallback(async () => {
