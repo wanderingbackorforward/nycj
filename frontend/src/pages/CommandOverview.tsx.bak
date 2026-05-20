@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { fetchGnOverview, fetchGnSystemStatus, fetchGnDailyBriefing } from "../api/area1";
-import { fetchArea2Overview, fetchArea2SystemStatus, fetchArea2AnalyticsOverview } from "../api/area2";
-import type { GnOverview, GnSystemStatus, GnDailyBriefing } from "../api/area1";
-import type { Area2Overview, Area2SystemStatus, Area2AnalyticsOverview } from "../api/area2";
+import { fetchGnOverview, fetchGnSystemStatus } from "../api/area1";
+import { fetchArea2Overview, fetchArea2SystemStatus } from "../api/area2";
+import type { GnOverview, GnSystemStatus } from "../api/area1";
+import type { Area2Overview, Area2SystemStatus } from "../api/area2";
 import LoadingState from "../components/status/LoadingState";
 
 // 中文映射
@@ -19,28 +19,22 @@ export default function CommandOverview() {
   const [gnSys, setGnSys] = useState<GnSystemStatus | null>(null);
   const [a2Overview, setA2Overview] = useState<Area2Overview | null>(null);
   const [a2Sys, setA2Sys] = useState<Area2SystemStatus | null>(null);
-  const [a2Analytics, setA2Analytics] = useState<Area2AnalyticsOverview | null>(null);
-  const [gnBriefing, setGnBriefing] = useState<GnDailyBriefing | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const [refreshTime, setRefreshTime] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [gnO, gnS, a2O, a2S, a2AnalyticsR, gnBriefingR] = await Promise.all([
+      const [gnO, gnS, a2O, a2S] = await Promise.all([
         fetchGnOverview("date=2026-04-14"),
         fetchGnSystemStatus(),
         fetchArea2Overview(),
         fetchArea2SystemStatus(),
-        fetchArea2AnalyticsOverview(),
-        fetchGnDailyBriefing(),
       ]);
       if (gnO.ok) setGnOverview(gnO.data!);
       if (gnS.ok) setGnSys(gnS.data!);
       if (a2O.ok) setA2Overview(a2O.data!);
       if (a2S.ok) setA2Sys(a2S.data!);
-      if (a2AnalyticsR.ok) setA2Analytics(a2AnalyticsR.data!);
-      if (gnBriefingR.ok) setGnBriefing(gnBriefingR.data!);
       setFetchError(!gnO.ok && !a2O.ok);
       setRefreshTime(new Date().toLocaleTimeString("zh-CN", { hour12: false }));
     } catch { setFetchError(true); }
@@ -228,76 +222,6 @@ export default function CommandOverview() {
             );
           })}
         </div>
-      </div>
-
-      
-      {/* ====== Row 2.5: Analytics overview ====== */}
-      <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        {/* 1工区 每日简报 */}
-        {gnBriefing && (
-          <div className="card">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "#00d4ff" }}>1工区每日简报</h3>
-            <div className="grid grid-cols-4 gap-2 mb-2">
-              <div className="text-center rounded p-2" style={{ background: "#0f1923", border: "1px solid #1a2640" }}>
-                <div className="text-lg font-bold" style={{ color: "#c8d6e5" }}>{gnBriefing.summary?.point_count ?? "-"}</div>
-                <div className="text-[10px]" style={{ color: "#5a6d8a" }}>监测点</div>
-              </div>
-              <div className="text-center rounded p-2" style={{ background: "#0f1923", border: "1px solid #1a2640" }}>
-                <div className="text-lg font-bold" style={{ color: "#c8d6e5" }}>{gnBriefing.summary?.reading_count ?? "-"}</div>
-                <div className="text-[10px]" style={{ color: "#5a6d8a" }}>当日读数</div>
-              </div>
-              <div className="text-center rounded p-2" style={{ background: "#2a0a0a", border: "1px solid #5a1a1a" }}>
-                <div className="text-lg font-bold" style={{ color: "#e65100" }}>{gnBriefing.summary?.exceed_design_limit ?? "-"}</div>
-                <div className="text-[10px]" style={{ color: "#5a6d8a" }}>超限</div>
-              </div>
-              <div className="text-center rounded p-2" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-                <div className="text-lg font-bold" style={{ color: "#d4a050" }}>{gnBriefing.summary?.severe_review ?? "-"}</div>
-                <div className="text-[10px]" style={{ color: "#5a6d8a" }}>重点复核</div>
-              </div>
-            </div>
-            {gnBriefing.top_worsening && gnBriefing.top_worsening.length > 0 && (
-              <div className="text-xs" style={{ color: "#98aec9" }}>
-                <span className="font-semibold" style={{ color: "#e65100" }}>恶化最快: </span>
-                {gnBriefing.top_worsening.slice(0, 3).map((w, i) => (
-                  <span key={i}>{w.point_code}({w.daily_chg?.toFixed(1)}/日){i < 2 ? "、" : ""}</span>
-                ))}
-              </div>
-            )}
-            {gnBriefing.recommendation && (
-              <p className="text-[11px] mt-2 italic" style={{ color: "#5a6d8a" }}>{gnBriefing.recommendation}</p>
-            )}
-          </div>
-        )}
-        {/* 2工区 Analytics */}
-        {a2Analytics && (
-          <div className="card">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "#00d4ff" }}>2工区监测报警分布</h3>
-            {a2Analytics.monitoring && (
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <div className="text-center rounded p-2" style={{ background: "#0a1a0a", border: "1px solid #1a4a1a" }}>
-                  <div className="text-lg font-bold" style={{ color: "#2e7d32" }}>{a2Analytics.monitoring.normal?.toLocaleString() ?? "-"}</div>
-                  <div className="text-[10px]" style={{ color: "#5a6d8a" }}>正常</div>
-                </div>
-                <div className="text-center rounded p-2" style={{ background: "#1a1210", border: "1px solid #5a3a1a" }}>
-                  <div className="text-lg font-bold" style={{ color: "#d4a050" }}>{a2Analytics.monitoring.warning?.toLocaleString() ?? "-"}</div>
-                  <div className="text-[10px]" style={{ color: "#5a6d8a" }}>预警</div>
-                </div>
-                <div className="text-center rounded p-2" style={{ background: "#2a0a0a", border: "1px solid #5a1a1a" }}>
-                  <div className="text-lg font-bold" style={{ color: "#e65100" }}>{a2Analytics.monitoring.alarm?.toLocaleString() ?? "-"}</div>
-                  <div className="text-[10px]" style={{ color: "#5a6d8a" }}>报警</div>
-                </div>
-              </div>
-            )}
-            {a2Analytics.tunneling && (
-              <div className="text-xs" style={{ color: "#98aec9" }}>
-                <span>掘进参数: </span>
-                <span style={{ color: "#2e7d32" }}>正常{a2Analytics.tunneling.normal?.toLocaleString() ?? "-"}</span>
-                <span className="mx-1">|</span>
-                <span style={{ color: "#e65100" }}>超限{a2Analytics.tunneling.exceed?.toLocaleString() ?? "-"}</span>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ====== Row 3: Actions ====== */}

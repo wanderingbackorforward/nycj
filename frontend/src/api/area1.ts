@@ -284,3 +284,85 @@ export function fetchGnSensorPatterns(): Promise<ApiResult<GnSensorPatternsRespo
 export function fetchGnPointsNeedingCoords(): Promise<ApiResult<GnPointsNeedingCoordsResponse>> {
   return apiGet(GN_API_BASE + '/points/needing-coords');
 }
+
+// ========== 高级分析 (v1.5 新增) ==========
+
+export interface GnDailyBriefing {
+  generated_at?: string; project_name?: string; work_area?: string; date?: string;
+  summary?: { point_count: number; reading_count: number; exceed_design_limit: number; severe_review: number };
+  top_worsening?: Array<{ point_code: string; monitoring_item: string; part: string; side: string; cum: number | null; daily_chg: number }>;
+  top_approaching?: Array<{ point_code: string; monitoring_item: string; part: string; side: string; cum: number | null; design_limit: number; ratio: number | null }>;
+  zone_summary?: Array<{ side: string; exceed_cnt: number }>;
+  recommendation?: string; disclaimer?: string;
+}
+
+export interface GnTrendAccelItem {
+  point_code?: string; monitoring_item?: string; monitoring_object?: string;
+  side?: string; part?: string; measured_at?: string;
+  cumulative_change?: number | null; latest_daily_change?: number | null;
+  prev_daily_change?: number; accel_val?: number | null; trend_direction?: string;
+}
+export interface GnTrendAccelResponse { generated_at?: string; filters?: Record<string,string>; items?: GnTrendAccelItem[] }
+
+export interface GnThresholdProxItem {
+  point_code?: string; monitoring_item?: string; monitoring_object?: string;
+  side?: string; part?: string; cumulative_change?: number | null;
+  daily_change?: number | null; design_limit?: number; proximity_ratio?: number | null;
+  status?: string;
+}
+export interface GnThresholdProxResponse { generated_at?: string; date?: string; filters?: Record<string,string>; items?: GnThresholdProxItem[] }
+
+export interface GnAnomalyItem {
+  point_code?: string; monitoring_item?: string; monitoring_object?: string;
+  side?: string; part?: string; mean_val?: number; std_val?: number;
+  latest_val?: number; z_score?: number; is_anomaly?: boolean;
+}
+export interface GnAnomalyResponse { generated_at?: string; sigma_threshold?: number; filters?: Record<string,string>; items?: GnAnomalyItem[] }
+
+export interface GnCrossCorrelation {
+  object_a?: string; item_a?: string; object_b?: string; item_b?: string;
+  coefficient?: number; strength?: string; direction?: string;
+  overlap_days?: number; description?: string;
+}
+export interface GnCrossCorrelationResponse { generated_at?: string; side_filter?: string; correlations?: GnCrossCorrelation[] }
+
+export interface GnEarlyWarningItem {
+  point_code?: string; monitoring_item?: string; part?: string; side?: string;
+  cum?: number | null; daily_chg?: number; design_limit?: number; ratio?: number | null;
+}
+export interface GnEarlyWarningResponse {
+  generated_at?: string; project_name?: string; work_area?: string; date?: string;
+  summary?: { point_count: number; reading_count: number; exceed_design_limit: number; severe_review: number };
+  top_worsening?: GnEarlyWarningItem[]; top_approaching?: GnEarlyWarningItem[];
+  zone_summary?: Array<{ side: string; exceed_cnt: number }>;
+  recommendation?: string; disclaimer?: string;
+}
+
+export interface GnZoneHeatmapItem {
+  side?: string; part?: string; point_count?: number; reading_count?: number;
+  exceed_count?: number; severe_count?: number; avg_exceed_ratio?: number;
+  max_exceed_ratio?: number; zone_status?: string;
+}
+export interface GnZoneHeatmapResponse { generated_at?: string; date?: string; items?: GnZoneHeatmapItem[]; interpretation?: string }
+
+export function fetchGnDailyBriefing(date?: string): Promise<ApiResult<GnDailyBriefing>> {
+  return apiGet(GN_API_BASE + '/analysis/daily-briefing?date=' + (date || DEFAULT_DATE));
+}
+export function fetchGnTrendAcceleration(pointCode: string): Promise<ApiResult<GnTrendAccelResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/trend-acceleration?point_code=' + encodeURIComponent(pointCode));
+}
+export function fetchGnThresholdProximity(pointCode: string): Promise<ApiResult<GnThresholdProxResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/threshold-proximity?point_code=' + encodeURIComponent(pointCode));
+}
+export function fetchGnAnomalyDetection(date?: string): Promise<ApiResult<GnAnomalyResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/anomaly-detection?date=' + (date || DEFAULT_DATE));
+}
+export function fetchGnCrossCorrelation(): Promise<ApiResult<GnCrossCorrelationResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/cross-correlation');
+}
+export function fetchGnEarlyWarning(date?: string): Promise<ApiResult<GnEarlyWarningResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/early-warning?date=' + (date || DEFAULT_DATE));
+}
+export function fetchGnZoneHeatmap(date?: string): Promise<ApiResult<GnZoneHeatmapResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/zone-heatmap?date=' + (date || DEFAULT_DATE));
+}
