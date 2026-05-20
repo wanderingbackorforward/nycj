@@ -109,7 +109,7 @@ export default function Area2Tunneling() {
 
   return (
     <div>
-      <h2 className="text-base font-semibold mb-1" style={{ color: "#c8d6e5" }}>2工区掘进参数</h2>
+      <h2 className="text-base font-semibold mb-1" style={{ color: "#c8d6e5" }}>2工区掘进参数 v2</h2>
       <p className="text-xs mb-4" style={{ color: "#6a7d9e" }}>
         盾构区间 · {totalParams.toLocaleString()}条参数 · {groups.length}个分组 · {totalExceed.toLocaleString()}条超限(P05/P95)
       </p>

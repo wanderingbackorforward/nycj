@@ -36,29 +36,27 @@ export default function Area2Overview() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ovr, rng, ana, mons] = await Promise.all([
-        fetchArea2Overview(), fetchArea2Rings(),
-        fetchArea2AnalyticsOverview(), fetchArea2MonitoringSummary()
-      ]);
+      // 第一批：快速加载 overview + rings（仪表盘+时间轸必须）
+      const [ovr, rng] = await Promise.all([fetchArea2Overview(), fetchArea2Rings()]);
       if (ovr.ok) setOverview(ovr.data!);
       if (rng.ok && rng.data) setRings(rng.data);
-      if (ana.ok && ana.data) setAnalytics(ana.data);
-      if (mons.ok && mons.data) setMonSummary(mons.data);
       if (!ovr.ok && !rng.ok) setError("接口连接异常");
 
       const currentRing = ovr.data?.position?.currentRing;
       if (currentRing) {
-        const [mil, risks] = await Promise.all([
-          fetchArea2RingMileage(),
-          fetchArea2RiskSourcesNearby(currentRing),
-        ]);
-        if (mil.ok && mil.data) setMileage(mil.data);
-        if (risks.ok && risks.data) setNearbyRisks(risks.data);
+        fetchArea2RingMileage().then(mil => { if (mil.ok && mil.data) setMileage(mil.data); });
+        fetchArea2RiskSourcesNearby(currentRing).then(risks => { if (risks.ok && risks.data) setNearbyRisks(risks.data); });
       }
     } catch { setError("接口连接异常"); }
     setLoading(false);
-  }, []);
 
+    // 第二批：慢查询 (analytics)，再随双页面渲染
+    try {
+      const [ana, mons] = await Promise.all([fetchArea2AnalyticsOverview(), fetchArea2MonitoringSummary()]);
+      if (ana.ok && ana.data) setAnalytics(ana.data);
+      if (mons.ok && mons.data) setMonSummary(mons.data);
+    } catch { /* analytics timeout is acceptable */ }
+  }, []);
   useEffect(() => { load(); }, [load]);
 
   // ---- 环号仪表盘 ----
@@ -131,12 +129,12 @@ export default function Area2Overview() {
         tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
         legend: { top: 4, textStyle: { color: "#98aec9", fontSize: 10 } },
         grid: { left: 50, right: 20, top: 30, bottom: 60 },
-        xAxis: { type: "category", data: items.map(i => i.item || ""), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+        xAxis: { type: "category", data: items.map(i => i.monitoring_item || ""), axisLabel: { color: "#5a6d8a", fontSize: 10, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
         yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
         series: [
-          { name: "报警", type: "bar", stack: "total", data: items.map(i => i.alarm || 0), itemStyle: { color: "#e65100" }, barWidth: 20 },
-          { name: "预警", type: "bar", stack: "total", data: items.map(i => i.warning || 0), itemStyle: { color: "#d4a050" } },
-          { name: "正常", type: "bar", stack: "total", data: items.map(i => i.normal || 0), itemStyle: { color: "#2e7d32" } },
+          { name: "报警", type: "bar", stack: "total", data: items.map(i => i.alarm_cnt || 0), itemStyle: { color: "#e65100" }, barWidth: 20 },
+          { name: "预警", type: "bar", stack: "total", data: items.map(i => i.warning_cnt || 0), itemStyle: { color: "#d4a050" } },
+          { name: "正常", type: "bar", stack: "total", data: items.map(i => i.normal_cnt || 0), itemStyle: { color: "#2e7d32" } },
         ],
       }, true);
     } catch { /* silent */ }
