@@ -40,7 +40,8 @@ export default function Area2SlurryGrouting() {
   useEffect(() => {
     if (!chartRef.current || !diagnosis?.slurry_params?.length) return;
     try {
-      if (!chartInst.current) chartInst.current = echarts.init(chartRef.current);
+      if (chartRef.current.clientWidth === 0 || chartRef.current.clientHeight === 0) return;
+      if (!chartInst.current) { try { chartInst.current = echarts.init(chartRef.current); } catch { return; } }
       // Aggregate by parameter name, show average
       const map = new Map<string, number[]>();
       for (const p of diagnosis.slurry_params) {
@@ -66,9 +67,9 @@ export default function Area2SlurryGrouting() {
         ],
       }, true);
     } catch { /* silent */ }
-    const h = () => { try { chartInst.current?.resize(); } catch { /* ignore */ } };
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
+    let ro: ResizeObserver | null = null;
+    try { ro = new ResizeObserver(() => { try { chartInst.current?.resize(); } catch {} }); ro.observe(chartRef.current!); } catch {}
+    return () => { ro?.disconnect(); };
   }, [diagnosis]);
 
   useEffect(() => { return () => { try { chartInst.current?.dispose(); } catch { /* ignore */ } }; }, []);

@@ -65,7 +65,8 @@ export default function Area2Overview() {
   useEffect(() => {
     if (!gaugeRef.current || !overview?.position) return;
     try {
-      if (!gaugeInst.current) gaugeInst.current = echarts.init(gaugeRef.current);
+      if (gaugeRef.current.clientWidth === 0 || gaugeRef.current.clientHeight === 0) return;
+      if (!gaugeInst.current) { try { gaugeInst.current = echarts.init(gaugeRef.current); } catch { return; } }
       const pos = overview.position;
       const curr = pos.currentRing || 0;
       const range = pos.ringRange || [1717, 1749];
@@ -93,7 +94,8 @@ export default function Area2Overview() {
   useEffect(() => {
     if (!timelineRef.current || rings.length === 0) return;
     try {
-      if (!tlInst.current) tlInst.current = echarts.init(timelineRef.current);
+      if (timelineRef.current.clientWidth === 0 || timelineRef.current.clientHeight === 0) return;
+      if (!tlInst.current) { try { tlInst.current = echarts.init(timelineRef.current); } catch { return; } }
       const ringNums = rings.map(r => r.ring_no).filter(n => typeof n === "number") as number[];
       const dates = rings.map(r => String((r as Record<string, unknown>).date || "")).map((d: string) => d.length > 10 ? d.substring(5, 10) : d);
       const chainLabels = rings.map(r => r.chainage ? r.chainage.substring(0, 10) : "");
@@ -121,7 +123,8 @@ export default function Area2Overview() {
   useEffect(() => {
     if (!alertBarRef.current || !analytics?.monitoring?.by_item) return;
     try {
-      if (!alertBarInst.current) alertBarInst.current = echarts.init(alertBarRef.current);
+      if (alertBarRef.current.clientWidth === 0 || alertBarRef.current.clientHeight === 0) return;
+      if (!alertBarInst.current) { try { alertBarInst.current = echarts.init(alertBarRef.current); } catch { return; } }
       const items = analytics.monitoring.by_item || [];
       alertBarInst.current.setOption({
         backgroundColor: "transparent",

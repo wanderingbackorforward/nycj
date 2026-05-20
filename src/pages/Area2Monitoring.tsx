@@ -32,7 +32,8 @@ export default function Area2Monitoring() {
   // ---- 监测项目读数柱状图 ----
   useEffect(() => {
     if (!barRef.current || items.length === 0) return;
-    if (!barInst.current) barInst.current = echarts.init(barRef.current);
+    if (barRef.current.clientWidth === 0 || barRef.current.clientHeight === 0) return;
+    if (!barInst.current) { try { barInst.current = echarts.init(barRef.current); } catch { return; } }
     barInst.current.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
@@ -51,7 +52,8 @@ export default function Area2Monitoring() {
   // ---- 解析置信度饼图 ----
   useEffect(() => {
     if (!pieRef.current || !summary) return;
-    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
+    if (pieRef.current.clientWidth === 0 || pieRef.current.clientHeight === 0) return;
+    if (!pieInst.current) { try { pieInst.current = echarts.init(pieRef.current); } catch { return; } }
     const raw = summary as Record<string,unknown>;
     const conf = (raw.parse_confidence_dist || {}) as Record<string,unknown>;
     const data = Object.entries(conf).map(([k, v]) => ({
@@ -73,7 +75,8 @@ export default function Area2Monitoring() {
   // ---- 数据质量雷达图 ----
   useEffect(() => {
     if (!radarRef.current || !summary) return;
-    if (!radarInst.current) radarInst.current = echarts.init(radarRef.current);
+    if (radarRef.current.clientWidth === 0 || radarRef.current.clientHeight === 0) return;
+    if (!radarInst.current) { try { radarInst.current = echarts.init(radarRef.current); } catch { return; } }
     const raw = summary as Record<string,unknown>;
     const confDist = (raw.parse_confidence_dist || {}) as Record<string,number>;
     const high = confDist.high || 0;
