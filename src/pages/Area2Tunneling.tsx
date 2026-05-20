@@ -61,11 +61,29 @@ export default function Area2Tunneling() {
     if (!group) return;
     setParamsLoading(true);
     try {
-      const res = await apiGet<any>(AREA2_API_BASE + "/tunneling/parameters?limit=1000&parameter_group=" + group);
-      if (res.ok && res.data) {
-        const arr = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
-        setParams(arr);
+      const ringRes = await apiGet<any>(AREA2_API_BASE + "/rings");
+      const allRings: number[] = [];
+      if (ringRes.ok && ringRes.data) {
+        const rings = Array.isArray(ringRes.data) ? ringRes.data : (ringRes.data as any).data || ringRes.data || [];
+        rings.forEach((r: any) => { if (typeof r.ring_no === "number") allRings.push(r.ring_no); });
       }
+      // Pick ~10 evenly spaced rings
+      const step = Math.max(1, Math.floor(allRings.length / 10));
+      const pickedRings = allRings.filter((_, i) => i % step === 0).slice(0, 12);
+      if (pickedRings.length === 0) pickedRings.push(allRings[0] || 1749);
+
+      // Fetch params for each picked ring
+      const allParams: any[] = [];
+      for (const r of pickedRings) {
+        try {
+          const pr = await apiGet<any>(AREA2_API_BASE + "/tunneling/parameters?ring_no=" + r + "&limit=100&parameter_group=" + group);
+          if (pr.ok && pr.data) {
+            const arr = Array.isArray(pr.data) ? pr.data : (pr.data as any).data || [];
+            allParams.push(...arr);
+          }
+        } catch {}
+      }
+      setParams(allParams);
     } catch {}
     setParamsLoading(false);
   }, []);
@@ -78,7 +96,7 @@ export default function Area2Tunneling() {
   useEffect(() => {
     const el = chartRef.current;
     if (!el || params.length === 0) return;
-    if (el.clientWidth === 0 || el.clientHeight === 0) return;
+    
     if (chartInst.current) { try { chartInst.current.dispose(); } catch {} }
     try { chartInst.current = echarts.init(el); } catch { return; }
 
@@ -103,6 +121,7 @@ export default function Area2Tunneling() {
         }),
       })),
     }, true);
+      console.log("echarts rendered:", paramNames.length, "params,", rings.length, "rings");
 
     let ro: ResizeObserver | null = null;
     try { ro = new ResizeObserver(() => chartInst.current?.resize()); ro.observe(el); } catch {}
@@ -154,15 +173,16 @@ export default function Area2Tunneling() {
         <div className="flex justify-between items-center mb-1">
           <h4 className="text-sm font-semibold" style={{ color: "#6a7d9e" }}>{selGroup?.group_name_cn || selectedGroup} · 趋势图</h4>
           <span className="text-[11px]" style={{ color: "#5a6d8a" }}>
-            {paramsLoading ? "加载中..." : params.length > 0 ? `前6参数/${params.length}条` : "点击分组加载"}
+            {paramsLoading ? "加载中..." : params.length > 0 ? `前6参数 · ${params.length}条 · ${[...new Set(params.map(p=>p.ring_no))].length}环` : "点击分组加载"}
           </span>
         </div>
         <p className="text-[10px] mb-1" style={{ color: "#5a6d8a" }}>
           阈值来源：P05/P95统计推导（非工程设计值），{selGroup?.exceed_count || 0}条超限需工程判断
         </p>
-        <div ref={chartRef} style={{ height: 300, minHeight: 300 }}>
+        <div style={{ height: 300, minHeight: 300, position: "relative" }}>
+          <div ref={chartRef} style={{ width: "100%", height: "100%" }} />
           {params.length === 0 && !paramsLoading && (
-            <div className="flex items-center justify-center h-full text-sm" style={{ color: "#5a6d8a" }}>点击上方分组查看趋势图</div>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#5a6d8a", fontSize: 14 }}>点击上方分组查看趋势图</div>
           )}
         </div>
       </div>
