@@ -32,7 +32,7 @@ export default function Area2Tunneling() {
 
   const loadParams = useCallback(async (group: string) => {
     if (!group) return; setParamsLoading(true);
-    try { const res = await fetchArea2TunnelingParams("limit=5000&parameter_group=" + encodeURIComponent(group)); if (res.ok && Array.isArray(res.data)) setParams(res.data); } catch {}
+    try { const res = await fetchArea2TunnelingParams("limit=1000&parameter_group=" + encodeURIComponent(group)); if (res.ok && Array.isArray(res.data)) setParams(res.data); } catch {}
     setParamsLoading(false);
   }, []);
 
