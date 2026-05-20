@@ -3,6 +3,7 @@ dist/
 .vite/
 *.log
 
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -10,8 +11,10 @@ __pycache__/
 venv/
 *.egg-info/
 
+# IDE
 .idea/
 .vscode/
 *.swp
 
+# Env
 .env
