@@ -2,7 +2,9 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import LoadingState from "../components/status/LoadingState";
 import ErrorState from "../components/status/ErrorState";
-import { fetchArea2Documents } from "../api/area2";
+import { fetchArea2Documents, fetchArea2Evidence } from "../api/area2";
+import { fetchGnEvidence, fetchGnSourceDocuments } from "../api/area1";
+import type { GnEvidence, GnSourceDocument } from "../api/area1";
 import type { Area2Document } from "../api/area2";
 
 const DOC_CATEGORY_CN: Record<string, string> = {
@@ -24,6 +26,9 @@ export default function DocumentsEvidence() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [a2Docs, setA2Docs] = useState<Area2Document[]>([]);
+  const [a2EvidenceCount, setA2EvidenceCount] = useState(0);
+  const [gnEvidenceCount, setGnEvidenceCount] = useState(0);
+  const [gnDocs, setGnDocs] = useState<GnSourceDocument[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -31,6 +36,10 @@ export default function DocumentsEvidence() {
     if (res.ok && res.data) setA2Docs(res.data);
     else setError("文档接口连接异常");
     setLoading(false);
+    // 非阻塞：证据统计 + 1工区源文档
+    fetchArea2Evidence().then(r => { if (r.ok && Array.isArray(r.data)) setA2EvidenceCount(r.data.length); });
+    fetchGnEvidence().then(r => { if (r.ok && Array.isArray(r.data)) setGnEvidenceCount(r.data.length); });
+    fetchGnSourceDocuments().then(r => { if (r.ok && Array.isArray(r.data)) setGnDocs(r.data); });
   }, []);
 
   useEffect(() => { load(); }, [load]);

@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useECharts } from "../components/charts/useECharts";
 import LoadingState from "../components/status/LoadingState";
 import ErrorState from "../components/status/ErrorState";
-import { fetchGnMonitoringPoints, fetchGnPointAnalysis, fetchGnDiagnose } from "../api/area1";
-import type { GnPoint, GnPointAnalysisResponse, GnDiagnoseResponse } from "../api/area1";
+import { fetchGnMonitoringPoints, fetchGnPointAnalysis, fetchGnDiagnose, fetchGnTrendAcceleration, fetchGnThresholdProximity } from "../api/area1";
+import type { GnPoint, GnPointAnalysisResponse, GnDiagnoseResponse, GnTrendAccelResponse, GnThresholdProxResponse } from "../api/area1";
 
 export default function Area1PointAnalysis() {
   const trendRef = useRef<HTMLDivElement>(null);
@@ -15,6 +15,8 @@ export default function Area1PointAnalysis() {
   const [selectedPoint, setSelectedPoint] = useState("");
   const [analysis, setAnalysis] = useState<GnPointAnalysisResponse | null>(null);
   const [diagnosis, setDiagnosis] = useState<GnDiagnoseResponse | null>(null);
+  const [trendAccel, setTrendAccel] = useState<GnTrendAccelResponse | null>(null);
+  const [thresholdProx, setThresholdProx] = useState<GnThresholdProxResponse | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
   // Load all points
@@ -43,6 +45,9 @@ export default function Area1PointAnalysis() {
     ]);
     if (analysisRes.ok && analysisRes.data) setAnalysis(analysisRes.data);
     if (diagRes.ok && diagRes.data?.findings?.length) setDiagnosis(diagRes.data);
+    // 非阻塞：趋势加速度 + 阈值逼近
+    fetchGnTrendAcceleration(code).then(r => { if (r.ok) setTrendAccel(r.data!); });
+    fetchGnThresholdProximity(code).then(r => { if (r.ok) setThresholdProx(r.data!); });
     setAnalysisLoading(false);
   }, []);
 
@@ -221,6 +226,55 @@ export default function Area1PointAnalysis() {
       )}
 
       {/* Data gaps */}
+      {/* 趋势加速度分析 */}
+      {trendAccel && trendAccel.items && (
+        <div className="card" style={{marginBottom:12}}>
+          <h4 style={{color:"#00d4ff", fontSize:13, marginBottom:4}}>趋势加速度分析</h4>
+          <p style={{color:"#5a6d8a", fontSize:10, marginBottom:6}}>正加速=恶化加快，负加速=恶化减缓</p>
+          {trendAccel.items.filter(d => d.point_code === selectedPoint).slice(0, 1).map((d, i) => (
+            <div key={i}>
+              <span style={{color:"#c8d6e5", fontSize:12}}>趋势方向: </span>
+              <span style={{
+                color: d.trend_direction === "加速恶化" ? "#e65100" : d.trend_direction === "减速" ? "#2e7d32" : "#d4a050",
+                fontWeight:600, fontSize:12
+              }}>{d.trend_direction}</span>
+              {typeof d.accel_val === "number" && (
+                <span style={{color:"#98aec9", fontSize:11, marginLeft:8}}>加速度: {d.accel_val.toFixed(2)}/日²</span>
+              )}
+            </div>
+          ))}
+          {/* Show all items with non-null accel */}
+          <div style={{display:"flex", flexWrap:"wrap", gap:4, marginTop:6}}>
+            {trendAccel.items.filter(d => d.point_code === selectedPoint && d.accel_val != null).slice(0, 5).map((d, i) => (
+              <span key={i} style={{fontSize:10, padding:"2px 6px", borderRadius:2,
+                background: (d.accel_val || 0) > 0 ? "#2a0a0a" : "#0a1a0a",
+                color: (d.accel_val || 0) > 0 ? "#e65100" : "#2e7d32"
+              }}>{d.latest_daily_change?.toFixed(1)}mm/日 → {(d.latest_daily_change||0) + (d.accel_val||0)}mm/日(次)</span>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* 阈值逼近分析 */}
+      {thresholdProx && thresholdProx.items && (
+        <div className="card" style={{marginBottom:12}}>
+          <h4 style={{color:"#d4a050", fontSize:13, marginBottom:4}}>阈值逼近度</h4>
+          {thresholdProx.items.filter(d => d.point_code === selectedPoint).slice(0, 1).map((d, i) => {
+            const ratio = d.proximity_ratio || 0;
+            const barColor = ratio > 1 ? "#e65100" : ratio > 0.7 ? "#d4a050" : "#2e7d32";
+            return (
+              <div key={i}>
+                <div style={{display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:2}}>
+                  <span style={{color:"#98aec9"}}>累计变化: {d.cumulative_change?.toFixed(2) ?? "-"} / 设计限值: {d.design_limit}</span>
+                  <span style={{color:barColor, fontWeight:600}}>{ratio > 1 ? "已超限" : ratio > 0.7 ? "逼近中" : "安全"}</span>
+                </div>
+                <div style={{height:6, background:"#1a2640", borderRadius:3, overflow:"hidden"}}>
+                  <div style={{height:"100%", width:Math.min(ratio*100, 100)+"%", background:barColor, borderRadius:3, transition:"width 0.5s"}} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {analysis?.data_gaps && analysis.data_gaps.length > 0 && (
         <section style={{marginBottom:14}}>
           <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:6}}>数据缺口</h3>

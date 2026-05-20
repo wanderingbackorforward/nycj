@@ -32,6 +32,8 @@ export default function Area2Tunneling() {
   const [params, setParams] = useState<TunnelingParam[]>([]);
   const [paramsLoading, setParamsLoading] = useState(false);
   const [postureReady, setPostureReady] = useState(0);
+  const [ringMileage, setRingMileage] = useState<Record<number, string>>({});
+  const [ringMileage, setRingMileage] = useState<Record<number, string>>({});
 
   // ---- 加载分组列表 ----
   const loadGroups = useCallback(async () => {
@@ -65,7 +67,7 @@ export default function Area2Tunneling() {
       const allRings: number[] = [];
       if (ringRes.ok && ringRes.data) {
         const rings = Array.isArray(ringRes.data) ? ringRes.data : (ringRes.data as any).data || ringRes.data || [];
-        rings.forEach((r: any) => { if (typeof r.ring_no === "number") allRings.push(r.ring_no); });
+        rings.forEach((r: any) => { if (typeof r.ring_no === "number") { allRings.push(r.ring_no); if (r.mileage) { setRingMileage(p => ({...p, [r.ring_no]: r.mileage})); } } });
       }
       // Pick ~10 evenly spaced rings
       const step = Math.max(1, Math.floor(allRings.length / 10));
@@ -110,7 +112,7 @@ export default function Area2Tunneling() {
       tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
       legend: { bottom: 0, textStyle: { color: "#7a8ba8", fontSize: 10 }, type: "scroll" },
       grid: { left: 50, right: 20, top: 10, bottom: 40 },
-      xAxis: { type: "category", data: rings.map(String), axisLabel: { color: "#5a6d8a", fontSize: 10 }, axisLine: { lineStyle: { color: "#1a2845" } } },
+      xAxis: { type: "category", data: rings.map(r => ringMileage[r] ? r + '\n' + ringMileage[r] : String(r)), axisLabel: { color: "#5a6d8a", fontSize: 10 }, axisLine: { lineStyle: { color: "#1a2845" } } },
       yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 10 }, splitLine: { lineStyle: { color: "#121e36" } } },
       series: paramNames.map((name, idx) => ({
         name, type: "line", smooth: true, symbol: "none",

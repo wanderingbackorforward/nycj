@@ -3,8 +3,8 @@ import * as echarts from "echarts";
 import StatusCard from "../components/cards/StatusCard";
 import LoadingState from "../components/status/LoadingState";
 import ErrorState from "../components/status/ErrorState";
-import { fetchGnOverview, fetchGnMonitoringItems, fetchGnAlerts, fetchGnHealth } from "../api/area1";
-import type { GnOverview, GnMonitoringItem, GnAlert } from "../api/area1";
+import { fetchGnOverview, fetchGnMonitoringItems, fetchGnAlerts, fetchGnHealth, fetchGnAnomalyDetection, fetchGnZoneHeatmap, fetchGnCrossCorrelation } from "../api/area1";
+import type { GnOverview, GnMonitoringItem, GnAlert, GnAnomalyResponse, GnZoneHeatmapResponse, GnCrossCorrelationResponse } from "../api/area1";
 
 export default function Area1Monitoring() {
   const barRef = useRef<HTMLDivElement>(null);
@@ -21,6 +21,9 @@ export default function Area1Monitoring() {
   const [overview, setOverview] = useState<GnOverview | null>(null);
   const [items, setItems] = useState<GnMonitoringItem[]>([]);
   const [alerts, setAlerts] = useState<GnAlert[]>([]);
+  const [anomaly, setAnomaly] = useState<GnAnomalyResponse | null>(null);
+  const [heatmap, setHeatmap] = useState<GnZoneHeatmapResponse | null>(null);
+  const [crossCorr, setCrossCorr] = useState<GnCrossCorrelationResponse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -35,6 +38,10 @@ export default function Area1Monitoring() {
     if (itemsRes.ok && itemsRes.data) setItems(itemsRes.data.items || []);
     if (alertsRes.ok && alertsRes.data) setAlerts(alertsRes.data.alerts || []);
     setLoading(false);
+    // 第二批：高级分析（非阻塞）
+    fetchGnAnomalyDetection().then(r => { if (r.ok) setAnomaly(r.data!); });
+    fetchGnZoneHeatmap().then(r => { if (r.ok) setHeatmap(r.data!); });
+    fetchGnCrossCorrelation().then(r => { if (r.ok) setCrossCorr(r.data!); });
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -235,7 +242,60 @@ export default function Area1Monitoring() {
         </section>
       )}
 
-      {/* ======== Row 5: 底部提示 ======== */}
+      {/* ======== Row 5: 高级分析 ======== */}
+      {(anomaly || heatmap || crossCorr) && (
+        <section style={{display:"flex", gap:16, marginBottom:16, flexWrap:"wrap"}}>
+          {/* 异常检测 */}
+          {anomaly?.items && anomaly.items.length > 0 && (
+            <div style={{flex:"1 1 300px", background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+              <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>异常检测（{anomaly.sigma_threshold}σ）</h4>
+              <div style={{maxHeight:200, overflowY:"auto"}}>
+                {anomaly.items.filter(a => a.is_anomaly).slice(0, 8).map((a, i) => (
+                  <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:"1px solid #1a2640", fontSize:11}}>
+                    <span style={{color:"#c8d6e5"}}>{a.point_code}</span>
+                    <span style={{color:"#98aec9"}}>{a.monitoring_item}</span>
+                    <span style={{color:"#e65100", fontWeight:600}}>Z={a.z_score?.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* 分区热力图 */}
+          {heatmap?.items && heatmap.items.length > 0 && (
+            <div style={{flex:"1 1 350px", background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+              <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>分区热力</h4>
+              <div style={{display:"flex", flexWrap:"wrap", gap:6}}>
+                {heatmap.items.slice(0, 12).map((z, i) => {
+                  const sev = z.zone_status === "严重" ? "#e65100" : z.zone_status === "异常" ? "#d4a050" : z.zone_status === "关注" ? "#1565c0" : "#2e7d32";
+                  return (
+                    <div key={i} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:4, padding:"6px 10px", minWidth:100}}>
+                      <div style={{fontSize:11, color:"#c8d6e5"}}>{z.side}·{z.part}</div>
+                      <div style={{fontSize:10, color:"#5a6d8a"}}>超限{z.exceed_count} 复核{z.severe_count}</div>
+                      <span style={{fontSize:10, padding:"1px 5px", borderRadius:2, background:sev, color:"#fff", opacity:0.8}}>{z.zone_status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* 交叉相关 */}
+          {crossCorr?.correlations && crossCorr.correlations.length > 0 && (
+            <div style={{flex:"1 1 250px", background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
+              <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>测项交叉相关</h4>
+              {crossCorr.correlations.slice(0, 4).map((c, i) => {
+                const clr = c.strength === "强" ? "#e65100" : c.strength === "中等" ? "#d4a050" : "#5a6d8a";
+                return (
+                  <div key={i} style={{fontSize:11, color:"#98aec9", padding:"3px 0", borderBottom:"1px solid #1a2640"}}>
+                    {c.item_a}↔{c.item_b} <span style={{color:clr, fontWeight:600}}>r={c.coefficient?.toFixed(2)}</span>
+                    <span style={{color:"#5a6d8a", fontSize:10, marginLeft:6}}>{c.strength}{c.direction}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+      {old_note}
       <div className="mon-status-note">
         <strong>提示：</strong>DSW13 地下水位需人工复核。页面不将「超设计限值」称为「报警」——超限仅表示超过设计参考值，最终判定需结合现场工况。
       </div>
