@@ -64,6 +64,176 @@ type GapDisplayRow = {
   source: "data-quality" | "data-gaps";
 };
 
+type OverallAction = NonNullable<GnOverview["actions"]>[number];
+
+type HeroActionView = {
+  priorityLabel: string;
+  title: string;
+  description: string;
+  linkLabel?: string;
+  target?: string;
+};
+
+type OverallHeroView = {
+  statusLabel: string;
+  statusNote: string;
+  fact: string;
+  suggestion: string;
+  actions: HeroActionView[];
+};
+
+function humanizeBackendText(text?: string): string {
+  if (!text) return "";
+
+  return text
+    .replace(/重点复核记录/g, "需人工复核的监测记录")
+    .replace(/重点复核/g, "需人工复核")
+    .replace(/unknown 数据/g, "无法自动判断的数据")
+    .replace(/unknown/g, "无法自动判断")
+    .replace(/人工核对/g, "人工复核")
+    .replace(/重点超标记录/g, "疑似超限数据");
+}
+
+function normalizeOverallStatus(raw?: string): { label: string; note: string } {
+  const value = raw || "";
+
+  if (value.includes("重点复核") || value.includes("复核")) {
+    return {
+      label: "需人工确认",
+      note: "当前不是直接判定为严重风险，而是存在需要人工复核的数据。",
+    };
+  }
+
+  if (value.includes("严重")) {
+    return {
+      label: "严重",
+      note: "存在较高风险，应立即核查并处理。",
+    };
+  }
+
+  if (value.includes("预警") || value.includes("报警") || value.includes("异常")) {
+    return {
+      label: "预警",
+      note: "存在异常或超限信号，应优先核查。",
+    };
+  }
+
+  if (value.includes("关注")) {
+    return {
+      label: "关注",
+      note: "存在需要持续观察或复核的情况。",
+    };
+  }
+
+  if (value.includes("正常")) {
+    return {
+      label: "正常",
+      note: "当前未发现明显异常。",
+    };
+  }
+
+  return {
+    label: value || "未判定",
+    note: "系统暂未形成明确风险判断。",
+  };
+}
+
+function isDuplicatedRecommendation(fact: string, suggestion: string): boolean {
+  if (!fact || !suggestion) return false;
+
+  const normalizedFact = fact.replace(/[，。,.]/g, "");
+  const normalizedSuggestion = suggestion.replace(/[，。,.]/g, "");
+
+  return (
+    normalizedFact.includes(normalizedSuggestion) ||
+    normalizedSuggestion.includes(normalizedFact) ||
+    /存在\s*\d+\s*条/.test(normalizedFact) && /存在\s*\d+\s*条/.test(normalizedSuggestion)
+  );
+}
+
+function normalizeRouteLabel(target?: string): string | undefined {
+  if (!target) return undefined;
+
+  if (target.includes("monitoring-alerts")) return "查看待复核清单";
+  if (target.includes("system-status")) return "查看数据缺口";
+  if (target.includes("manual-review")) return "查看复核记录";
+  if (target.includes("data-gaps")) return "查看数据缺口";
+
+  return "查看详情";
+}
+
+function normalizePriority(priority?: string): string {
+  if (!priority) return "建议";
+
+  if (priority.includes("高")) return "高优先级";
+  if (priority.includes("中")) return "中优先级";
+  if (priority.includes("低")) return "低优先级";
+
+  return priority;
+}
+
+function normalizeHeroAction(action: OverallAction): HeroActionView {
+  const raw = action.action || "";
+  const text = humanizeBackendText(raw);
+
+  if (raw.includes("人工复核") || raw.includes("超标") || raw.includes("超限")) {
+    return {
+      priorityLabel: normalizePriority(action.priority),
+      title: "复核疑似超限数据",
+      description: "确认这些数据是否需要形成正式预警，避免把待确认数据误读成已确认风险。",
+      target: action.target,
+      linkLabel: normalizeRouteLabel(action.target),
+    };
+  }
+
+  if (raw.includes("设计限值") || raw.includes("unknown") || raw.includes("未知")) {
+    return {
+      priorityLabel: normalizePriority(action.priority),
+      title: "补充缺失限值或确认无法判断的数据",
+      description: "部分数据因缺少设计限值或状态不明确，系统无法自动判断是否异常。",
+      target: action.target,
+      linkLabel: normalizeRouteLabel(action.target),
+    };
+  }
+
+  return {
+    priorityLabel: normalizePriority(action.priority),
+    title: text || "处理待确认事项",
+    description: action.target ? "请进入对应清单完成确认或补充。" : "请根据现场情况完成核查。",
+    target: action.target,
+    linkLabel: normalizeRouteLabel(action.target),
+  };
+}
+
+function buildOverallHeroView(
+  overview: GnOverview | null,
+  briefing: GnDailyBriefing | null,
+  unknownCount: number,
+): OverallHeroView {
+  const status = normalizeOverallStatus(overview?.overall_level_cn || overview?.overall_level);
+
+  const rawFact = humanizeBackendText(overview?.headline);
+  const fact =
+    rawFact ||
+    (unknownCount > 0
+      ? `今日有 ${unknownCount} 条监测数据需要人工确认。`
+      : "今日暂无明确待复核事项。");
+
+  const rawSuggestion = humanizeBackendText(briefing?.recommendation);
+  const suggestion =
+    rawSuggestion && !isDuplicatedRecommendation(fact, rawSuggestion)
+      ? rawSuggestion
+      : "建议先处理疑似超限项，再处理缺失限值或无法自动判断的数据。";
+
+  return {
+    statusLabel: status.label,
+    statusNote: status.note,
+    fact,
+    suggestion,
+    actions: (overview?.actions ?? []).slice(0, 3).map(normalizeHeroAction),
+  };
+}
+
 function pickCard(overview: GnOverview | null, keywords: string[], fallback = 0): number {
   const cards = overview?.cards ?? [];
   const hit = cards.find((c) => keywords.some((k) => c.name?.includes(k)));
@@ -292,6 +462,11 @@ export default function Area1Monitoring() {
   const exceedCount = pickCard(overview, ["超限", "超设计"]);
   const unknownCount = pickCard(overview, ["待确认", "未知"]);
 
+  const hero = useMemo(
+    () => buildOverallHeroView(overview, briefing, unknownCount),
+    [overview, briefing, unknownCount],
+  );
+
   const warningRows = useMemo<WarningRow[]>(() => {
     const rows: WarningRow[] = [];
 
@@ -345,7 +520,6 @@ export default function Area1Monitoring() {
   }, [dataQuality, dataGaps]);
 
   const criticalFindings = overview?.priority_findings ?? [];
-  const actions = overview?.actions ?? [];
   const anomalyCount = anomaly?.items?.filter((x) => x.is_anomaly).length ?? 0;
   const reviewedRecordCount = manualReviews?.reviews?.length ?? 0;
 
@@ -390,35 +564,49 @@ export default function Area1Monitoring() {
 
       <section style={styles.heroGrid}>
         <div style={styles.conclusionCard}>
-          <div style={styles.kicker}>当前整体状态</div>
+          <div style={styles.kicker}>当前处理状态</div>
 
           <div
             style={{
               ...styles.level,
-              color: riskColor(overview?.overall_level_cn || overview?.overall_level),
+              color: riskColor(hero.statusLabel),
             }}
           >
-            {overview?.overall_level_cn || overview?.overall_level || "未判定"}
+            {hero.statusLabel}
           </div>
 
-          <div style={styles.headline}>
-            {overview?.headline || briefing?.recommendation || "暂无整体研判结论"}
+          <div style={styles.statusNote}>{hero.statusNote}</div>
+
+          <div style={styles.headline}>{hero.fact}</div>
+
+          <div style={styles.recommendation}>
+            <b>建议：</b>
+            {hero.suggestion}
           </div>
 
-          {briefing?.recommendation && (
-            <div style={styles.recommendation}>
-              <b>综合建议：</b>
-              {briefing.recommendation}
-            </div>
-          )}
-
-          {actions.length > 0 && (
+          {hero.actions.length > 0 && (
             <div style={styles.actionList}>
-              {actions.slice(0, 3).map((a, idx) => (
-                <div key={`${a.action}-${idx}`} style={styles.actionItem}>
-                  <span style={styles.actionPriority}>{a.priority || "建议"}</span>
-                  <span>{a.action}</span>
-                  {a.target && <span style={styles.muted}> / {a.target}</span>}
+              {hero.actions.map((a, idx) => (
+                <div key={`${a.title}-${idx}`} style={styles.actionItemV2}>
+                  <span
+                    style={{
+                      ...styles.actionPriority,
+                      background: a.priorityLabel.includes("高") ? "#7f1d1d" : "#1e3a8a",
+                    }}
+                  >
+                    {a.priorityLabel}
+                  </span>
+
+                  <div style={styles.actionContent}>
+                    <b>{a.title}</b>
+                    <div style={styles.muted}>{a.description}</div>
+
+                    {a.target && a.linkLabel && (
+                      <a href={a.target} style={styles.actionLink}>
+                        {a.linkLabel}
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -892,6 +1080,32 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8,
     alignItems: "center",
     color: "#cbd5e1",
+  },
+  statusNote: {
+    color: "#94a3b8",
+    fontSize: 13,
+    lineHeight: 1.6,
+    marginBottom: 12,
+  },
+  actionItemV2: {
+    display: "grid",
+    gridTemplateColumns: "82px 1fr",
+    gap: 10,
+    alignItems: "flex-start",
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+  },
+  actionContent: {
+    display: "grid",
+    gap: 4,
+  },
+  actionLink: {
+    color: "#38bdf8",
+    textDecoration: "none",
+    fontSize: 13,
+    marginTop: 4,
   },
   actionPriority: {
     background: "#1e3a8a",
