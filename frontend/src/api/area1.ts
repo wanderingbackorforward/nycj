@@ -356,7 +356,13 @@ export interface GnZoneHeatmapItem {
   exceed_count?: number; severe_count?: number; avg_exceed_ratio?: number;
   max_exceed_ratio?: number; zone_status?: string;
 }
-export interface GnZoneHeatmapResponse { generated_at?: string; date?: string; items?: GnZoneHeatmapItem[]; interpretation?: string }
+export interface GnZoneHeatmapResponse {
+  generated_at?: string;
+  date?: string;
+  items?: GnZoneHeatmapItem[];
+  zones?: GnZoneHeatmapItem[];
+  interpretation?: string;
+}
 
 export function fetchGnDailyBriefing(date?: string): Promise<ApiResult<GnDailyBriefing>> {
   return apiGet(GN_API_BASE + '/analysis/daily-briefing?date=' + (date || DEFAULT_DATE));
@@ -378,4 +384,67 @@ export function fetchGnEarlyWarning(date?: string): Promise<ApiResult<GnEarlyWar
 }
 export function fetchGnZoneHeatmap(date?: string): Promise<ApiResult<GnZoneHeatmapResponse>> {
   return apiGet(GN_API_BASE + '/analysis/zone-heatmap?date=' + (date || DEFAULT_DATE));
+}
+
+export interface GnQuickRiskKpis {
+  suspected_exceed?: number;
+  pending_confirm?: number;
+  monitoring_points?: number;
+  readings?: number;
+}
+
+export interface GnQuickRiskRecord {
+  priority?: string;
+  label?: string;
+  point_code?: string;
+  monitoring_item?: string;
+  monitoring_object?: string;
+  side?: string;
+  part?: string;
+  metric?: string;
+  ratio?: number;
+  reason?: string;
+}
+
+export interface GnQuickRiskHeat {
+  group?: string;
+  side?: string;
+  part?: string;
+  suspected_exceed?: number;
+  points?: number;
+  max_ratio?: number;
+  level?: string;
+}
+
+export interface GnQuickRiskType {
+  monitoring_item?: string;
+  suspected_exceed?: number;
+  points?: number;
+  max_ratio?: number;
+  representative_point?: string;
+  level?: string;
+}
+
+export interface GnQuickRiskNote {
+  title?: string;
+  status?: string;
+  description?: string;
+}
+
+export interface GnQuickRiskResponse {
+  generated_at?: string;
+  date?: string;
+  state?: string;
+  title?: string;
+  reason?: string;
+  action?: string;
+  kpis?: GnQuickRiskKpis;
+  risk_records?: GnQuickRiskRecord[];
+  group_heatmap?: GnQuickRiskHeat[];
+  risk_types?: GnQuickRiskType[];
+  data_notes?: GnQuickRiskNote[];
+}
+
+export function fetchGnQuickRisk(date?: string): Promise<ApiResult<GnQuickRiskResponse>> {
+  return apiGet(GN_API_BASE + '/analysis/quick-risk?date=' + (date || DEFAULT_DATE));
 }
