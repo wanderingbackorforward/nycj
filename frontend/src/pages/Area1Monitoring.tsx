@@ -9,10 +9,8 @@ import {
   fetchGnEarlyWarning,
   fetchGnAnomalyDetection,
   fetchGnZoneHeatmap,
-  fetchGnCrossCorrelation,
   fetchGnDataQualityTyped,
   fetchGnDataGaps,
-  fetchGnManualReviews,
   fetchGnPointsNeedingCoords,
 } from "../api/area1";
 
@@ -27,63 +25,61 @@ import type {
   GnAnomalyItem,
   GnZoneHeatmapResponse,
   GnZoneHeatmapItem,
-  GnCrossCorrelationResponse,
   GnDataQualityResponse,
   GnDataGapsResponse,
-  GnDataGap,
-  GnManualReviewResponse,
   GnPointsNeedingCoordsResponse,
 } from "../api/area1";
 
 const DEFAULT_DATE = "2026-04-14";
+const POINT_PAGE = "/md/nycj/area1-point-analysis";
 
 type Priority = "高" | "中" | "低";
-type OverallStatus = "正常" | "关注" | "需复核" | "预警" | "严重" | "未判定";
+type OverallState = "正常" | "关注" | "需复核" | "预警" | "严重" | "未判定";
 
-type RiskQueueRow = {
+type RiskRow = {
   key: string;
   priority: Priority;
-  type: string;
+  label: string;
   pointCode?: string;
   item?: string;
   zone?: string;
   metric?: string;
-  explanation: string;
+  reason: string;
 };
 
 type TodoRow = {
   key: string;
   priority: Priority;
   title: string;
-  count?: number;
-  description: string;
+  count: number;
+  desc: string;
 };
 
-type GapRow = {
+type HeatCell = {
   key: string;
-  title: string;
-  description: string;
-  count?: number;
-  priority?: string;
+  side: string;
+  part: string;
+  status: string;
+  pointCount: number;
+  readingCount: number;
+  exceedCount: number;
+  severeCount: number;
+  score: number;
 };
 
 type BriefView = {
-  status: OverallStatus;
+  state: OverallState;
   title: string;
-  description: string;
   reason: string;
-  nextStep: string;
+  action: string;
 };
 
-type DataQualityGapItem = NonNullable<GnDataQualityResponse["data_gaps"]>[number];
-
 function pickCard(overview: GnOverview | null, keywords: string[], fallback = 0): number {
-  const cards = overview?.cards ?? [];
-  const hit = cards.find((c) => keywords.some((k) => c.name?.includes(k)));
+  const hit = overview?.cards?.find((c) => keywords.some((k) => c.name?.includes(k)));
   return hit?.value ?? fallback;
 }
 
-function formatNumber(v: number | null | undefined, digits = 1): string {
+function num(v: number | null | undefined, digits = 1): string {
   if (typeof v !== "number" || Number.isNaN(v)) return "-";
   return v.toFixed(digits);
 }
@@ -96,68 +92,33 @@ function extractCount(...texts: Array<string | undefined | null>): number | null
   return null;
 }
 
-function statusColor(status?: string): string {
-  const value = status ?? "";
-
-  if (["严重", "高", "critical", "severe"].some((x) => value.includes(x))) {
-    return "#e65100";
-  }
-
-  if (["预警", "报警", "异常", "warning", "alarm"].some((x) => value.includes(x))) {
-    return "#d4a050";
-  }
-
-  if (["需复核", "复核", "关注", "中"].some((x) => value.includes(x))) {
-    return "#00d4ff";
-  }
-
-  if (["正常", "低", "normal", "ok"].some((x) => value.includes(x))) {
-    return "#2e7d32";
-  }
-
+function colorByState(text?: string): string {
+  const v = text || "";
+  if (["严重", "高", "critical", "severe"].some((x) => v.includes(x))) return "#e65100";
+  if (["预警", "报警", "异常", "warning"].some((x) => v.includes(x))) return "#d4a050";
+  if (["需复核", "复核", "关注", "中"].some((x) => v.includes(x))) return "#00d4ff";
+  if (["正常", "低", "normal", "ok"].some((x) => v.includes(x))) return "#2e7d32";
   return "#5a6d8a";
 }
 
-function priorityColor(priority: Priority): string {
+function colorByPriority(priority: Priority): string {
   if (priority === "高") return "#e65100";
   if (priority === "中") return "#d4a050";
   return "#00d4ff";
 }
 
-function zoneLabel(side?: string, part?: string): string {
+function zoneName(side?: string, part?: string): string {
   if (!side && !part) return "未标注区域";
   return `${side || "未知侧"} · ${part || "未知部位"}`;
 }
 
-function zoneScore(z: GnZoneHeatmapItem): number {
-  return (
-    (z.severe_count ?? 0) * 5 +
-    (z.exceed_count ?? 0) * 3 +
-    (z.avg_exceed_ratio ?? 0)
-  );
-}
-
-function itemRiskScore(i: GnMonitoringItem): number {
-  return (
-    (i.exceed_count ?? 0) * 3 +
-    (i.unknown_count ?? 0) +
-    (i.point_count ?? 0) * 0.05
-  );
-}
-
-function riskLevelFromScore(score: number): Priority {
-  if (score >= 80) return "高";
-  if (score >= 30) return "中";
-  return "低";
-}
-
-function deriveStatus(params: {
-  rawLevel?: string;
+function deriveState(params: {
+  raw?: string;
   exceedCount: number;
   unknownCount: number;
   anomalyCount: number;
-}): OverallStatus {
-  const raw = params.rawLevel ?? "";
+}): OverallState {
+  const raw = params.raw || "";
 
   if (raw.includes("严重")) return "严重";
   if (raw.includes("预警") || raw.includes("报警") || raw.includes("异常")) return "预警";
@@ -168,109 +129,102 @@ function deriveStatus(params: {
   return "未判定";
 }
 
-function buildBriefView(params: {
+function buildBrief(params: {
   overview: GnOverview | null;
   briefing: GnDailyBriefing | null;
   exceedCount: number;
   unknownCount: number;
   anomalyCount: number;
 }): BriefView {
-  const count =
-    extractCount(params.overview?.headline, params.briefing?.recommendation) ??
-    params.unknownCount ??
-    0;
-
-  const status = deriveStatus({
-    rawLevel: params.overview?.overall_level_cn || params.overview?.overall_level,
+  const state = deriveState({
+    raw: params.overview?.overall_level_cn || params.overview?.overall_level,
     exceedCount: params.exceedCount,
     unknownCount: params.unknownCount,
     anomalyCount: params.anomalyCount,
   });
 
-  if (status === "正常") {
+  const reviewCount =
+    extractCount(params.overview?.headline, params.briefing?.recommendation) ||
+    params.exceedCount ||
+    params.unknownCount;
+
+  if (state === "正常") {
     return {
-      status,
+      state,
       title: "今日未发现明显整体风险",
-      description: "当前监测数据未显示需要优先处理的整体性异常。",
       reason: "超限、待确认和统计异常数量处于较低水平。",
-      nextStep: "保持日常监测，继续观察分区变化和监测类型趋势。",
+      action: "保持日常监测，关注分区和类型排行变化。",
     };
   }
 
-  if (status === "需复核") {
+  if (state === "需复核") {
     return {
-      status,
-      title: count > 0 ? `今日有 ${count} 条记录需要复核` : "今日存在需要复核的监测记录",
-      description: "这些记录尚未等同于已确认预警，需要先完成复核判断。",
-      reason:
-        params.exceedCount > 0
-          ? `当前存在 ${params.exceedCount} 条疑似超限记录，同时有 ${params.unknownCount} 条待确认数据。`
-          : `当前有 ${params.unknownCount} 条待确认数据，部分数据可能因限值缺失或状态不明确而无法自动判断。`,
-      nextStep: "先复核疑似超限记录，再处理缺失限值、缺坐标或无法自动判断的数据。",
+      state,
+      title: reviewCount > 0 ? `今日有 ${reviewCount} 条记录需要复核` : "今日存在待复核记录",
+      reason: "这些记录尚未等同于正式预警，需要先确认是否真实超限或属于数据口径问题。",
+      action: "先处理疑似超限，再处理缺失限值、缺坐标和无法自动判断的数据。",
     };
   }
 
-  if (status === "预警" || status === "严重") {
+  if (state === "预警" || state === "严重") {
     return {
-      status,
-      title: status === "严重" ? "今日存在严重风险信号" : "今日存在预警风险信号",
-      description: "系统检测到异常或超限信号，需要优先核查重点区域与重点监测类型。",
-      reason: `当前疑似超限 ${params.exceedCount} 条，统计异常 ${params.anomalyCount} 条，待确认 ${params.unknownCount} 条。`,
-      nextStep: "优先核查高优先级风险队列，并结合分区热力判断是否存在集中风险。",
+      state,
+      title: state === "严重" ? "今日存在严重风险信号" : "今日存在预警风险信号",
+      reason: `疑似超限 ${params.exceedCount} 条，统计异常 ${params.anomalyCount} 条，待确认 ${params.unknownCount} 条。`,
+      action: "优先核查高优先级风险记录，并结合分区热力判断是否集中发生。",
     };
   }
 
   return {
-    status,
+    state,
     title: "今日存在需要关注的监测变化",
-    description: "当前未形成明确严重预警，但存在需要持续观察或补充确认的数据。",
     reason: `待确认 ${params.unknownCount} 条，统计异常 ${params.anomalyCount} 条。`,
-    nextStep: "关注异常集中区域、风险类型分布和数据质量缺口。",
+    action: "关注重点风险记录、分区热力和数据口径问题。",
   };
 }
 
-function riskFromWorsening(w: GnEarlyWarningItem): RiskQueueRow {
+function riskFromWorsening(w: GnEarlyWarningItem): RiskRow {
   return {
     key: `worsening-${w.point_code || "unknown"}-${w.monitoring_item || "item"}`,
     priority: "高",
-    type: "恶化加快",
+    label: "恶化加快",
     pointCode: w.point_code,
     item: w.monitoring_item,
-    zone: zoneLabel(w.side, w.part),
-    metric: `日变化 ${formatNumber(w.daily_chg, 2)}`,
-    explanation: "变化速度靠前，建议纳入重点观察。",
+    zone: zoneName(w.side, w.part),
+    metric: `日变化 ${num(w.daily_chg, 2)}`,
+    reason: "变化速度靠前，建议优先查看单点趋势。",
   };
 }
 
-function riskFromApproaching(w: GnEarlyWarningItem): RiskQueueRow {
+function riskFromApproaching(w: GnEarlyWarningItem): RiskRow {
   const ratio = w.ratio ?? 0;
 
   return {
-    key: `approaching-${w.point_code || "unknown"}-${w.monitoring_item || "item"}`,
+    key: `approach-${w.point_code || "unknown"}-${w.monitoring_item || "item"}`,
     priority: ratio >= 0.9 ? "高" : "中",
-    type: "逼近阈值",
+    label: "逼近限值",
     pointCode: w.point_code,
     item: w.monitoring_item,
-    zone: zoneLabel(w.side, w.part),
-    metric: `阈值比 ${formatNumber(ratio * 100, 0)}%`,
-    explanation: "接近设计限值，建议确认趋势是否持续。",
+    zone: zoneName(w.side, w.part),
+    metric: `限值比 ${num(ratio * 100, 0)}%`,
+    reason: "接近设计限值，建议确认趋势是否持续。",
   };
 }
 
-function riskFromAnomaly(a: GnAnomalyItem): RiskQueueRow {
+function riskFromAnomaly(a: GnAnomalyItem): RiskRow {
   return {
     key: `anomaly-${a.point_code || "unknown"}-${a.monitoring_item || "item"}`,
     priority: Math.abs(a.z_score ?? 0) >= 4 ? "高" : "中",
-    type: "统计异常",
+    label: "统计异常",
     pointCode: a.point_code,
     item: a.monitoring_item,
-    zone: zoneLabel(a.side, a.part),
-    metric: `Z=${formatNumber(a.z_score, 1)}`,
-    explanation: "偏离历史分布，需判断是真实变化还是数据质量问题。",
+    zone: zoneName(a.side, a.part),
+    metric: `Z=${num(a.z_score, 1)}`,
+    reason: "偏离历史分布，需判断是真实变化还是数据质量问题。",
   };
 }
 
-function riskFromAlert(a: GnAlert, index: number): RiskQueueRow {
+function riskFromAlert(a: GnAlert, index: number): RiskRow {
   const ratio =
     typeof a.exceed_ratio === "number"
       ? a.exceed_ratio
@@ -281,21 +235,66 @@ function riskFromAlert(a: GnAlert, index: number): RiskQueueRow {
   return {
     key: `alert-${index}-${a.point_code || "unknown"}-${a.monitoring_item || "item"}`,
     priority: ratio >= 1.5 ? "高" : "中",
-    type: "疑似超限",
+    label: "疑似超限",
     pointCode: a.point_code,
     item: a.monitoring_item,
-    zone: zoneLabel(a.side, a.part),
-    metric: `超限 ${formatNumber(ratio, 2)}x`,
-    explanation: "需要复核是否形成正式预警。",
+    zone: zoneName(a.side, a.part),
+    metric: `超限 ${num(ratio, 2)}x`,
+    reason: "需复核是否形成正式预警。",
   };
 }
 
-function buildTodoRows(params: {
+function zoneScore(z: GnZoneHeatmapItem): number {
+  return (
+    (z.severe_count ?? 0) * 5 +
+    (z.exceed_count ?? 0) * 3 +
+    (z.avg_exceed_ratio ?? 0)
+  );
+}
+
+function heatFromZone(z: GnZoneHeatmapItem, idx: number): HeatCell {
+  return {
+    key: `${z.side || "side"}-${z.part || "part"}-${idx}`,
+    side: z.side || "未知侧",
+    part: z.part || "未标注部位",
+    status: z.zone_status || "未判定",
+    pointCount: z.point_count ?? 0,
+    readingCount: z.reading_count ?? 0,
+    exceedCount: z.exceed_count ?? 0,
+    severeCount: z.severe_count ?? 0,
+    score: zoneScore(z),
+  };
+}
+
+function heatFromSide(side: string, exceedCnt: number, idx: number): HeatCell {
+  return {
+    key: `side-${side}-${idx}`,
+    side: side || "未知侧",
+    part: "全部",
+    status: exceedCnt > 0 ? "需复核" : "正常",
+    pointCount: 0,
+    readingCount: 0,
+    exceedCount: exceedCnt,
+    severeCount: 0,
+    score: exceedCnt * 3,
+  };
+}
+
+function itemRiskScore(i: GnMonitoringItem): number {
+  return (i.exceed_count ?? 0) * 3 + (i.unknown_count ?? 0) + (i.point_count ?? 0) * 0.05;
+}
+
+function riskLevel(score: number): Priority {
+  if (score >= 80) return "高";
+  if (score >= 30) return "中";
+  return "低";
+}
+
+function buildTodos(params: {
   exceedCount: number;
   unknownCount: number;
   dataGapCount: number;
   missingCoordCount: number;
-  manualReviewCount: number;
 }): TodoRow[] {
   const rows: TodoRow[] = [];
 
@@ -303,9 +302,9 @@ function buildTodoRows(params: {
     rows.push({
       key: "exceed",
       priority: "高",
-      title: "复核疑似超限记录",
+      title: "复核疑似超限",
       count: params.exceedCount,
-      description: "确认是否形成正式预警，避免把待确认记录误读成已确认风险。",
+      desc: "确认是否形成正式预警。",
     });
   }
 
@@ -315,59 +314,77 @@ function buildTodoRows(params: {
       priority: "中",
       title: "确认待判断数据",
       count: params.unknownCount,
-      description: "处理状态不明确、缺少限值或无法自动识别的数据。",
+      desc: "处理状态不明或限值缺失的数据。",
     });
   }
 
   if (params.dataGapCount > 0) {
     rows.push({
-      key: "gaps",
+      key: "gap",
       priority: "中",
-      title: "补齐数据缺口",
+      title: "补齐数据口径",
       count: params.dataGapCount,
-      description: "完善阈值、证据、坐标等信息，提高整体研判可信度。",
+      desc: "补阈值、证据、坐标等基础信息。",
     });
   }
 
   if (params.missingCoordCount > 0) {
     rows.push({
-      key: "coords",
+      key: "coord",
       priority: "低",
-      title: "补充测点坐标",
+      title: "补测点坐标",
       count: params.missingCoordCount,
-      description: "坐标缺失会影响分区热力与空间定位分析。",
-    });
-  }
-
-  if (rows.length === 0 && params.manualReviewCount > 0) {
-    rows.push({
-      key: "reviewed",
-      priority: "低",
-      title: "查看已复核记录",
-      count: params.manualReviewCount,
-      description: "当前主要是复核记录归档，可按需查看处理结果。",
+      desc: "坐标缺失会影响空间热力判断。",
     });
   }
 
   return rows;
 }
 
-function normalizeQualityGap(g: DataQualityGapItem, index: number): GapRow {
-  return {
-    key: `quality-${index}-${g.category || "gap"}`,
-    title: g.category || "数据质量问题",
-    description: g.description || "-",
-    count: g.affected_count,
-  };
+function getThresholdGapCount(dataQuality: GnDataQualityResponse | null): number | undefined {
+  const hit = dataQuality?.data_gaps?.find((g) =>
+    `${g.category}${g.description}`.includes("阈值") ||
+    `${g.category}${g.description}`.includes("限值"),
+  );
+  return hit?.affected_count;
 }
 
-function normalizeDataGap(g: GnDataGap, index: number): GapRow {
-  return {
-    key: `gap-${g.id || index}-${g.title || "gap"}`,
-    title: g.title || "数据缺口",
-    description: g.description || g.impact || "-",
-    priority: g.priority,
-  };
+function getQualitySummary(params: {
+  dataQuality: GnDataQualityResponse | null;
+  dataGaps: GnDataGapsResponse | null;
+  unknownCount: number;
+  missingCoordCount: number;
+}) {
+  const thresholdCount = getThresholdGapCount(params.dataQuality);
+  const p1 = params.dataGaps?.summary?.p1_count ?? 0;
+  const p2 = params.dataGaps?.summary?.p2_count ?? 0;
+
+  return [
+    {
+      key: "threshold",
+      title: "限值口径",
+      value: thresholdCount != null ? `${thresholdCount} 项` : "待补充",
+      desc: "部分数据只能按设计限值判断，缺少正式预警/报警阈值。",
+    },
+    {
+      key: "unknown",
+      title: "待确认数据",
+      value: `${params.unknownCount} 条`,
+      desc: "这些数据不是已确认风险，需要复核后才能闭环。",
+    },
+    {
+      key: "gap",
+      title: "数据缺口",
+      value: `P1 ${p1} / P2 ${p2}`,
+      desc: "影响整体研判可信度，优先补 P1。",
+    },
+    {
+      key: "coord",
+      title: "空间坐标",
+      value: `${params.missingCoordCount} 点`,
+      desc: "坐标缺失会影响真实空间热力图。",
+    },
+  ];
 }
 
 export default function Area1Monitoring() {
@@ -383,10 +400,8 @@ export default function Area1Monitoring() {
   const [alerts, setAlerts] = useState<GnAlert[]>([]);
   const [anomaly, setAnomaly] = useState<GnAnomalyResponse | null>(null);
   const [heatmap, setHeatmap] = useState<GnZoneHeatmapResponse | null>(null);
-  const [crossCorr, setCrossCorr] = useState<GnCrossCorrelationResponse | null>(null);
   const [dataQuality, setDataQuality] = useState<GnDataQualityResponse | null>(null);
   const [dataGaps, setDataGaps] = useState<GnDataGapsResponse | null>(null);
-  const [manualReviews, setManualReviews] = useState<GnManualReviewResponse | null>(null);
   const [missingCoords, setMissingCoords] = useState<GnPointsNeedingCoordsResponse | null>(null);
 
   const load = useCallback(async () => {
@@ -403,10 +418,8 @@ export default function Area1Monitoring() {
         alertsRes,
         anomalyRes,
         heatmapRes,
-        corrRes,
         qualityRes,
         gapsRes,
-        reviewsRes,
         coordsRes,
       ] = await Promise.all([
         fetchGnHealth(),
@@ -417,10 +430,8 @@ export default function Area1Monitoring() {
         fetchGnAlerts({ date, limit: 100 }),
         fetchGnAnomalyDetection(date),
         fetchGnZoneHeatmap(date),
-        fetchGnCrossCorrelation(),
         fetchGnDataQualityTyped(),
         fetchGnDataGaps(),
-        fetchGnManualReviews(),
         fetchGnPointsNeedingCoords(),
       ]);
 
@@ -435,10 +446,8 @@ export default function Area1Monitoring() {
       if (alertsRes.ok) setAlerts(alertsRes.data?.alerts ?? []);
       if (anomalyRes.ok) setAnomaly(anomalyRes.data ?? null);
       if (heatmapRes.ok) setHeatmap(heatmapRes.data ?? null);
-      if (corrRes.ok) setCrossCorr(corrRes.data ?? null);
       if (qualityRes.ok) setDataQuality(qualityRes.data ?? null);
       if (gapsRes.ok) setDataGaps(gapsRes.data ?? null);
-      if (reviewsRes.ok) setManualReviews(reviewsRes.data ?? null);
       if (coordsRes.ok) setMissingCoords(coordsRes.data ?? null);
     } catch {
       setError("整体风险研判数据加载失败");
@@ -453,17 +462,15 @@ export default function Area1Monitoring() {
 
   const pointCount = pickCard(overview, ["监测点", "点数"]);
   const readingCount = pickCard(overview, ["累计", "读数", "次数"]);
-  const exceedCount = pickCard(overview, ["超限", "超设计"]);
+  const exceedCount = pickCard(overview, ["超限", "超设计"]) || alerts.length;
   const unknownCount = pickCard(overview, ["待确认", "未知"]);
-
   const anomalyCount = anomaly?.items?.filter((x) => x.is_anomaly).length ?? 0;
-  const manualReviewCount = manualReviews?.reviews?.length ?? 0;
   const dataGapCount = dataGaps?.summary?.total_gaps ?? dataGaps?.gaps?.length ?? 0;
   const missingCoordCount = missingCoords?.missing_coords ?? 0;
 
   const brief = useMemo(
     () =>
-      buildBriefView({
+      buildBrief({
         overview,
         briefing,
         exceedCount,
@@ -473,70 +480,74 @@ export default function Area1Monitoring() {
     [overview, briefing, exceedCount, unknownCount, anomalyCount],
   );
 
-  const todoRows = useMemo(
+  const todos = useMemo(
     () =>
-      buildTodoRows({
+      buildTodos({
         exceedCount,
         unknownCount,
         dataGapCount,
         missingCoordCount,
-        manualReviewCount,
       }),
-    [exceedCount, unknownCount, dataGapCount, missingCoordCount, manualReviewCount],
+    [exceedCount, unknownCount, dataGapCount, missingCoordCount],
   );
 
-  const riskRows = useMemo<RiskQueueRow[]>(() => {
-    const rows: RiskQueueRow[] = [];
+  const risks = useMemo<RiskRow[]>(() => {
+    const rows: RiskRow[] = [];
 
     for (const w of earlyWarning?.top_worsening ?? []) rows.push(riskFromWorsening(w));
     for (const w of earlyWarning?.top_approaching ?? []) rows.push(riskFromApproaching(w));
     for (const a of (anomaly?.items ?? []).filter((x) => x.is_anomaly)) rows.push(riskFromAnomaly(a));
-    alerts.slice(0, 30).forEach((a, index) => rows.push(riskFromAlert(a, index)));
+    alerts.slice(0, 30).forEach((a, idx) => rows.push(riskFromAlert(a, idx)));
 
-    const priorityWeight: Record<Priority, number> = { 高: 3, 中: 2, 低: 1 };
-    const uniq = new Map<string, RiskQueueRow>();
+    const weight: Record<Priority, number> = { 高: 3, 中: 2, 低: 1 };
+    const uniq = new Map<string, RiskRow>();
 
     for (const row of rows) {
-      const key = `${row.type}-${row.pointCode ?? "unknown"}-${row.item ?? "item"}`;
+      const key = `${row.pointCode ?? "unknown"}-${row.item ?? "item"}-${row.label}`;
       const old = uniq.get(key);
-      if (!old || priorityWeight[row.priority] > priorityWeight[old.priority]) {
-        uniq.set(key, row);
-      }
+      if (!old || weight[row.priority] > weight[old.priority]) uniq.set(key, row);
     }
 
     return Array.from(uniq.values())
-      .sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority])
-      .slice(0, 10);
+      .sort((a, b) => weight[b.priority] - weight[a.priority])
+      .slice(0, 8);
   }, [earlyWarning, anomaly, alerts]);
 
-  const zoneRows = useMemo(() => {
-    return [...(heatmap?.items ?? [])]
-      .sort((a, b) => zoneScore(b) - zoneScore(a))
-      .slice(0, 9);
-  }, [heatmap]);
+  const heatCells = useMemo<HeatCell[]>(() => {
+    const fromHeatmap = (heatmap?.items ?? [])
+      .map(heatFromZone)
+      .filter((x) => x.side || x.part);
 
-  const riskTypeRows = useMemo(() => {
+    if (fromHeatmap.length > 0) {
+      return fromHeatmap.sort((a, b) => b.score - a.score).slice(0, 12);
+    }
+
+    return (earlyWarning?.zone_summary ?? [])
+      .map((z, idx) => heatFromSide(z.side, z.exceed_cnt, idx))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+  }, [heatmap, earlyWarning]);
+
+  const riskTypes = useMemo(() => {
     return [...items]
       .map((i) => ({
         ...i,
         riskScore: itemRiskScore(i),
       }))
       .sort((a, b) => b.riskScore - a.riskScore)
-      .slice(0, 8);
+      .slice(0, 6);
   }, [items]);
 
-  const gapRows = useMemo<GapRow[]>(() => {
-    const qualityRows = (dataQuality?.data_gaps ?? []).map(normalizeQualityGap);
-    const gapRowsFromApi = (dataGaps?.gaps ?? []).map(normalizeDataGap);
-
-    return [...qualityRows, ...gapRowsFromApi].slice(0, 8);
-  }, [dataQuality, dataGaps]);
-
-  const strongCorrelations = useMemo(() => {
-    return (crossCorr?.correlations ?? [])
-      .filter((c) => ["强", "中等"].includes(c.strength || ""))
-      .slice(0, 5);
-  }, [crossCorr]);
+  const qualitySummary = useMemo(
+    () =>
+      getQualitySummary({
+        dataQuality,
+        dataGaps,
+        unknownCount,
+        missingCoordCount,
+      }),
+    [dataQuality, dataGaps, unknownCount, missingCoordCount],
+  );
 
   if (loading) {
     return (
@@ -551,9 +562,7 @@ export default function Area1Monitoring() {
       <header style={styles.header}>
         <div>
           <h1 style={styles.h1}>1工区整体风险研判</h1>
-          <p style={styles.subtitle}>
-            面向整体监测、分区预警、风险类型分布与数据质量闭环；单点趋势请进入单点分析页。
-          </p>
+          <p style={styles.subtitle}>整体研判、风险排序、分区热力与单点跳转。</p>
         </div>
 
         <div style={styles.toolbar}>
@@ -563,81 +572,66 @@ export default function Area1Monitoring() {
             onChange={(e) => setDate(e.target.value)}
             style={styles.input}
           />
-
-          <button onClick={() => void load()} style={styles.button}>
-            刷新
-          </button>
-
+          <button onClick={() => void load()} style={styles.button}>刷新</button>
           <span
             style={{
               ...styles.statusPill,
-              borderColor: dbDown ? "#e65100" : "#2e7d32",
               color: dbDown ? "#e65100" : "#2e7d32",
+              borderColor: dbDown ? "#e65100" : "#2e7d32",
             }}
           >
-            {dbDown ? "数据库异常" : "系统正常"}
+            {dbDown ? "系统异常" : "系统正常"}
           </span>
         </div>
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
-      {dbDown && <div style={styles.error}>数据库连接异常，当前研判结果可能不完整。</div>}
 
       <section style={styles.topGrid}>
-        <Panel title="今日整体研判" desc="先说明整体判断，再说明为什么，以及下一步做什么。">
-          <div style={styles.briefHeader}>
+        <Panel title="今日结论">
+          <div style={styles.briefLine}>
             <span
               style={{
-                ...styles.levelBadge,
-                borderColor: statusColor(brief.status),
-                color: statusColor(brief.status),
+                ...styles.stateBadge,
+                borderColor: colorByState(brief.state),
+                color: colorByState(brief.state),
               }}
             >
-              {brief.status}
+              {brief.state}
             </span>
             <div>
               <div style={styles.briefTitle}>{brief.title}</div>
-              <div style={styles.briefDesc}>{brief.description}</div>
+              <div style={styles.briefText}>{brief.reason}</div>
             </div>
           </div>
-
-          <div style={styles.briefBody}>
-            <InfoLine label="判断依据" text={brief.reason} />
-            <InfoLine label="建议动作" text={brief.nextStep} />
-          </div>
+          <div style={styles.nextStep}>{brief.action}</div>
         </Panel>
 
         <div style={styles.kpiGrid}>
-          <KpiCard title="疑似超限" value={exceedCount} unit="条" desc="需复核是否形成正式预警" tone="danger" />
-          <KpiCard title="待确认" value={unknownCount} unit="条" desc="尚未完成状态判断" tone="warning" />
-          <KpiCard title="统计异常" value={anomalyCount} unit="条" desc="偏离历史分布的记录" tone="info" />
-          <KpiCard title="监测覆盖" value={pointCount} unit="点" desc={`累计读数 ${readingCount} 条`} tone="normal" />
+          <Kpi title="疑似超限" value={exceedCount} unit="条" color="#e65100" />
+          <Kpi title="待确认" value={unknownCount} unit="条" color="#d4a050" />
+          <Kpi title="统计异常" value={anomalyCount} unit="条" color="#00d4ff" />
+          <Kpi title="监测覆盖" value={pointCount} unit="点" color="#2e7d32" sub={`${readingCount} 条读数`} />
         </div>
       </section>
 
       <section style={styles.twoCol}>
-        <Panel title="优先待办" desc="把待确认数据拆成可以处理的任务，不直接暴露系统内部路径。">
-          {todoRows.length === 0 ? (
-            <Empty text="暂无优先待办" />
+        <Panel title="优先处理">
+          {todos.length === 0 ? (
+            <Empty text="暂无待处理事项" />
           ) : (
-            <div style={styles.todoList}>
-              {todoRows.map((todo) => (
-                <div key={todo.key} style={styles.todoItem}>
-                  <span
-                    style={{
-                      ...styles.priorityBadge,
-                      background: priorityColor(todo.priority),
-                    }}
-                  >
-                    {todo.priority}
+            <div style={styles.todoGrid}>
+              {todos.map((t) => (
+                <div key={t.key} style={styles.todo}>
+                  <span style={{ ...styles.priority, background: colorByPriority(t.priority) }}>
+                    {t.priority}
                   </span>
-
-                  <div style={styles.todoContent}>
+                  <div>
                     <div style={styles.rowBetween}>
-                      <b>{todo.title}</b>
-                      {todo.count != null && <span style={styles.countText}>{todo.count} 项</span>}
+                      <b>{t.title}</b>
+                      <span style={styles.count}>{t.count} 项</span>
                     </div>
-                    <div style={styles.muted}>{todo.description}</div>
+                    <div style={styles.muted}>{t.desc}</div>
                   </div>
                 </div>
               ))}
@@ -645,33 +639,42 @@ export default function Area1Monitoring() {
           )}
         </Panel>
 
-        <Panel title="重点风险队列" desc="汇总全区恶化、逼近阈值、统计异常和疑似超限；这里只排序，不展开单点诊断。">
-          {riskRows.length === 0 ? (
-            <Empty text="暂无重点风险项" />
+        <Panel title="重点风险记录">
+          {risks.length === 0 ? (
+            <Empty text="暂无重点风险记录" />
           ) : (
-            <div style={styles.riskList}>
-              {riskRows.map((r) => (
-                <div key={r.key} style={styles.riskItem}>
-                  <div style={styles.riskMeta}>
+            <div style={styles.riskGrid}>
+              {risks.map((r) => (
+                <div key={r.key} style={styles.risk}>
+                  <div style={styles.riskTop}>
                     <span
                       style={{
                         ...styles.priorityOutline,
-                        borderColor: priorityColor(r.priority),
-                        color: priorityColor(r.priority),
+                        color: colorByPriority(r.priority),
+                        borderColor: colorByPriority(r.priority),
                       }}
                     >
                       {r.priority}
                     </span>
-                    <span style={styles.typeBadge}>{r.type}</span>
-                    {r.metric && <span style={styles.metricBadge}>{r.metric}</span>}
+                    <span style={styles.typeTag}>{r.label}</span>
+                    {r.metric && <span style={styles.metricTag}>{r.metric}</span>}
                   </div>
 
                   <div style={styles.riskTitle}>
                     {r.item || "未知监测项"}
-                    {r.pointCode && <span style={styles.pointCode}> / {r.pointCode}</span>}
+                    {r.pointCode && <span style={styles.point}> / {r.pointCode}</span>}
                   </div>
 
-                  <div style={styles.muted}>{r.zone}，{r.explanation}</div>
+                  <div style={styles.muted}>{r.zone}，{r.reason}</div>
+
+                  {r.pointCode && (
+                    <a
+                      style={styles.linkButton}
+                      href={`${POINT_PAGE}?point_code=${encodeURIComponent(r.pointCode)}`}
+                    >
+                      查看单点
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
@@ -679,219 +682,129 @@ export default function Area1Monitoring() {
         </Panel>
       </section>
 
-      <Panel title="分区风险热力" desc="回答“风险集中在哪里”。按严重数、超限数和平均超限比综合排序。">
-        {zoneRows.length === 0 ? (
-          <Empty text="暂无分区热力数据" />
+      <Panel title="分区风险热力">
+        {heatCells.length === 0 ? (
+          <div style={styles.notice}>
+            暂无可用分区热力数据。{missingCoordCount > 0 ? `当前还有 ${missingCoordCount} 个测点缺少坐标。` : ""}
+          </div>
         ) : (
-          <div style={styles.zoneGrid}>
-            {zoneRows.map((z, idx) => {
-              const score = zoneScore(z);
-              return (
-                <div key={`${z.side || "side"}-${z.part || "part"}-${idx}`} style={styles.zoneCard}>
-                  <div style={styles.rowBetween}>
-                    <b>{zoneLabel(z.side, z.part)}</b>
-                    <span style={{ ...styles.zoneStatus, color: statusColor(z.zone_status) }}>
-                      {z.zone_status || "未判定"}
-                    </span>
-                  </div>
-
-                  <div style={styles.zoneStats}>
-                    <span>点位 {z.point_count ?? 0}</span>
-                    <span>读数 {z.reading_count ?? 0}</span>
-                    <span>超限 {z.exceed_count ?? 0}</span>
-                    <span>严重 {z.severe_count ?? 0}</span>
-                  </div>
-
-                  <div style={styles.barTrack}>
-                    <div
-                      style={{
-                        ...styles.barFill,
-                        width: `${Math.min(100, score * 2)}%`,
-                        background: statusColor(z.zone_status),
-                      }}
-                    />
-                  </div>
+          <div style={styles.heatGrid}>
+            {heatCells.map((cell) => (
+              <div key={cell.key} style={styles.heatCell}>
+                <div style={styles.rowBetween}>
+                  <b>{cell.side}</b>
+                  <span style={{ ...styles.heatStatus, color: colorByState(cell.status) }}>
+                    {cell.status}
+                  </span>
                 </div>
-              );
-            })}
+                <div style={styles.heatPart}>{cell.part}</div>
+                <div style={styles.heatNums}>
+                  <span>超限 {cell.exceedCount}</span>
+                  <span>严重 {cell.severeCount}</span>
+                  {cell.pointCount > 0 && <span>点位 {cell.pointCount}</span>}
+                </div>
+                <div style={styles.barTrack}>
+                  <div
+                    style={{
+                      ...styles.barFill,
+                      width: `${Math.min(100, cell.score * 2)}%`,
+                      background: colorByState(cell.status),
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Panel>
 
       <section style={styles.twoCol}>
-        <Panel title="风险类型排行" desc="按超限、待确认和点位规模综合排序，回答“哪类监测问题最突出”。">
-          {riskTypeRows.length === 0 ? (
-            <Empty text="暂无监测项目数据" />
+        <Panel title="风险类型排行">
+          {riskTypes.length === 0 ? (
+            <Empty text="暂无监测类型数据" />
           ) : (
-            <div style={styles.tableWrap}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>监测类型</th>
-                    <th style={styles.th}>对象</th>
-                    <th style={styles.th}>点位</th>
-                    <th style={styles.th}>超限</th>
-                    <th style={styles.th}>待确认</th>
-                    <th style={styles.th}>风险</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {riskTypeRows.map((i, idx) => {
-                    const risk = riskLevelFromScore(i.riskScore);
-                    return (
-                      <tr key={`${i.monitoring_item || "item"}-${i.monitoring_object || "object"}-${idx}`}>
-                        <td style={styles.td}>{i.monitoring_item || "-"}</td>
-                        <td style={styles.td}>{i.monitoring_object || "-"}</td>
-                        <td style={styles.td}>{i.point_count ?? 0}</td>
-                        <td style={{ ...styles.td, color: "#e65100" }}>{i.exceed_count ?? 0}</td>
-                        <td style={{ ...styles.td, color: "#d4a050" }}>{i.unknown_count ?? 0}</td>
-                        <td style={styles.td}>
-                          <span style={{ ...styles.riskLevel, color: priorityColor(risk) }}>{risk}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>类型</th>
+                  <th style={styles.th}>点位</th>
+                  <th style={styles.th}>超限</th>
+                  <th style={styles.th}>待确认</th>
+                  <th style={styles.th}>等级</th>
+                </tr>
+              </thead>
+              <tbody>
+                {riskTypes.map((i, idx) => {
+                  const level = riskLevel(i.riskScore);
+                  return (
+                    <tr key={`${i.monitoring_item || "item"}-${idx}`}>
+                      <td style={styles.td}>{i.monitoring_item || "-"}</td>
+                      <td style={styles.td}>{i.point_count ?? 0}</td>
+                      <td style={{ ...styles.td, color: "#e65100" }}>{i.exceed_count ?? 0}</td>
+                      <td style={{ ...styles.td, color: "#d4a050" }}>{i.unknown_count ?? 0}</td>
+                      <td style={{ ...styles.td, color: colorByPriority(level), fontWeight: 800 }}>{level}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </Panel>
 
-        <Panel title="数据质量说明" desc="解释哪些不是已确认风险，而是因为限值、证据、坐标或状态不完整导致的不确定。">
-          {gapRows.length === 0 ? (
-            <Empty text="暂无数据质量缺口" />
-          ) : (
-            <div style={styles.gapList}>
-              {gapRows.map((g) => (
-                <div key={g.key} style={styles.gapItem}>
-                  <div>
-                    <b>{g.title}</b>
-                    <div style={styles.muted}>{g.description}</div>
-                    {g.priority && <div style={styles.muted}>优先级：{g.priority}</div>}
-                  </div>
-
-                  {g.count != null && <span style={styles.countText}>{g.count} 项</span>}
+        <Panel title="数据口径">
+          <div style={styles.qualityGrid}>
+            {qualitySummary.map((q) => (
+              <div key={q.key} style={styles.quality}>
+                <div style={styles.qualityTop}>
+                  <b>{q.title}</b>
+                  <span style={styles.count}>{q.value}</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-      </section>
-
-      <section style={styles.twoCol}>
-        <Panel title="统计异常概览" desc="只做整体概览，不替代单点分析。">
-          <div style={styles.miniGrid}>
-            <MiniStat label="异常记录" value={anomalyCount} />
-            <MiniStat label="Sigma 阈值" value={anomaly?.sigma_threshold ?? "-"} />
-          </div>
-
-          {(anomaly?.items ?? [])
-            .filter((x) => x.is_anomaly)
-            .slice(0, 5)
-            .map((x, idx) => (
-              <div key={`${x.point_code || "point"}-${idx}`} style={styles.compactRow}>
-                <span>{x.monitoring_item || "-"}</span>
-                <span style={styles.muted}>{zoneLabel(x.side, x.part)}</span>
-                <span style={styles.metricBadge}>Z={formatNumber(x.z_score, 1)}</span>
+                <div style={styles.muted}>{q.desc}</div>
               </div>
             ))}
-
-          {anomalyCount === 0 && <Empty text="暂无统计异常记录" />}
-        </Panel>
-
-        <Panel title="测项关联分析" desc="仅展示强/中等相关，用于提示系统性联动风险。">
-          {strongCorrelations.length === 0 ? (
-            <Empty text="暂无强相关或中等相关结果" />
-          ) : (
-            strongCorrelations.map((c, idx) => (
-              <div key={`${c.item_a || "a"}-${c.item_b || "b"}-${idx}`} style={styles.correlationItem}>
-                <div>
-                  <b>{c.item_a || "-"} ↔ {c.item_b || "-"}</b>
-                  <div style={styles.muted}>
-                    {c.description || `${c.strength || ""}${c.direction || ""}相关`}
-                  </div>
-                </div>
-                <span style={styles.metricBadge}>r={formatNumber(c.coefficient, 2)}</span>
-              </div>
-            ))
-          )}
+          </div>
         </Panel>
       </section>
-
-      <footer style={styles.footer}>
-        当前页面定位：整体风险研判与预警。单点趋势、阈值逼近、证据链和诊断请进入「1工区单点分析」。
-      </footer>
     </div>
   );
 }
 
 function Panel({
   title,
-  desc,
   children,
 }: {
   title: string;
-  desc?: string;
   children: React.ReactNode;
 }) {
   return (
     <section style={styles.panel}>
-      <div style={styles.panelHeader}>
-        <h2 style={styles.h2}>{title}</h2>
-        {desc && <p style={styles.panelDesc}>{desc}</p>}
-      </div>
+      <h2 style={styles.h2}>{title}</h2>
       {children}
     </section>
   );
 }
 
-function KpiCard({
+function Kpi({
   title,
   value,
   unit,
-  desc,
-  tone,
+  color,
+  sub,
 }: {
   title: string;
   value: number | string;
-  unit?: string;
-  desc: string;
-  tone: "danger" | "warning" | "info" | "normal";
+  unit: string;
+  color: string;
+  sub?: string;
 }) {
-  const colorMap: Record<typeof tone, string> = {
-    danger: "#e65100",
-    warning: "#d4a050",
-    info: "#00d4ff",
-    normal: "#2e7d32",
-  };
-
   return (
-    <div style={styles.kpiCard}>
+    <div style={styles.kpi}>
       <div style={styles.kpiTitle}>{title}</div>
-      <div style={{ ...styles.kpiValue, color: colorMap[tone] }}>
+      <div style={{ ...styles.kpiValue, color }}>
         {value}
-        {unit && <span style={styles.kpiUnit}> {unit}</span>}
+        <span style={styles.kpiUnit}> {unit}</span>
       </div>
-      <div style={styles.kpiDesc}>{desc}</div>
-    </div>
-  );
-}
-
-function InfoLine({ label, text }: { label: string; text: string }) {
-  return (
-    <div style={styles.infoLine}>
-      <span style={styles.infoLabel}>{label}</span>
-      <span style={styles.infoText}>{text}</span>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div style={styles.miniStat}>
-      <div style={styles.kpiTitle}>{label}</div>
-      <div style={styles.miniValue}>{value}</div>
+      {sub && <div style={styles.muted}>{sub}</div>}
     </div>
   );
 }
@@ -913,7 +826,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 16,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   h1: {
     margin: 0,
@@ -952,7 +865,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     padding: "6px 10px",
     fontSize: 12,
-    whiteSpace: "nowrap",
     background: "#0f1525",
   },
   error: {
@@ -984,32 +896,22 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#0f1525",
     border: "1px solid #1a2640",
     borderRadius: 10,
-    padding: 16,
-    marginBottom: 14,
-  },
-  panelHeader: {
+    padding: 15,
     marginBottom: 14,
   },
   h2: {
-    margin: 0,
+    margin: "0 0 12px",
     fontSize: 16,
     color: "#e6f2ff",
     fontWeight: 800,
   },
-  panelDesc: {
-    margin: "6px 0 0",
-    color: "#5a6d8a",
-    fontSize: 12,
-    lineHeight: 1.6,
-  },
-  briefHeader: {
+  briefLine: {
     display: "grid",
-    gridTemplateColumns: "92px 1fr",
+    gridTemplateColumns: "86px 1fr",
     gap: 14,
     alignItems: "start",
-    marginBottom: 14,
   },
-  levelBadge: {
+  stateBadge: {
     border: "1px solid",
     borderRadius: 999,
     padding: "6px 10px",
@@ -1025,41 +927,27 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     marginBottom: 6,
   },
-  briefDesc: {
+  briefText: {
     color: "#98aec9",
-    fontSize: 14,
-    lineHeight: 1.7,
+    fontSize: 13,
+    lineHeight: 1.6,
   },
-  briefBody: {
-    display: "grid",
-    gap: 10,
+  nextStep: {
+    marginTop: 12,
     background: "#0b1020",
     border: "1px solid #1a2640",
     borderRadius: 8,
     padding: 12,
-  },
-  infoLine: {
-    display: "grid",
-    gridTemplateColumns: "76px 1fr",
-    gap: 10,
-    alignItems: "start",
-  },
-  infoLabel: {
-    color: "#00d4ff",
     fontSize: 13,
-    fontWeight: 800,
-  },
-  infoText: {
+    lineHeight: 1.6,
     color: "#c8d6e5",
-    fontSize: 13,
-    lineHeight: 1.7,
   },
   kpiGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
   },
-  kpiCard: {
+  kpi: {
     background: "#0f1525",
     border: "1px solid #1a2640",
     borderRadius: 10,
@@ -1073,23 +961,17 @@ const styles: Record<string, React.CSSProperties> = {
   kpiValue: {
     fontSize: 26,
     fontWeight: 900,
-    marginBottom: 4,
   },
   kpiUnit: {
     fontSize: 13,
     color: "#5a6d8a",
     fontWeight: 500,
   },
-  kpiDesc: {
-    color: "#5a6d8a",
-    fontSize: 12,
-    lineHeight: 1.5,
-  },
-  todoList: {
+  todoGrid: {
     display: "grid",
     gap: 10,
   },
-  todoItem: {
+  todo: {
     display: "grid",
     gridTemplateColumns: "52px 1fr",
     gap: 10,
@@ -1098,7 +980,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     padding: 12,
   },
-  priorityBadge: {
+  priority: {
     color: "#050816",
     borderRadius: 999,
     padding: "4px 8px",
@@ -1113,11 +995,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "2px 8px",
     fontSize: 12,
     fontWeight: 800,
-    whiteSpace: "nowrap",
-  },
-  todoContent: {
-    display: "grid",
-    gap: 4,
   },
   rowBetween: {
     display: "flex",
@@ -1125,7 +1002,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 10,
     alignItems: "center",
   },
-  countText: {
+  count: {
     color: "#00d4ff",
     fontSize: 12,
     whiteSpace: "nowrap",
@@ -1135,67 +1012,76 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     lineHeight: 1.6,
   },
-  riskList: {
+  riskGrid: {
     display: "grid",
     gap: 10,
   },
-  riskItem: {
+  risk: {
     background: "#0b1020",
     border: "1px solid #1a2640",
     borderRadius: 8,
     padding: 12,
   },
-  riskMeta: {
+  riskTop: {
     display: "flex",
     gap: 8,
-    alignItems: "center",
     flexWrap: "wrap",
     marginBottom: 8,
   },
-  typeBadge: {
+  typeTag: {
     background: "#121e36",
     color: "#c8d6e5",
     borderRadius: 999,
     padding: "3px 8px",
     fontSize: 12,
   },
-  metricBadge: {
+  metricTag: {
     background: "#102a43",
     color: "#00d4ff",
     borderRadius: 999,
     padding: "3px 8px",
     fontSize: 12,
-    whiteSpace: "nowrap",
   },
   riskTitle: {
     color: "#e6f2ff",
     fontWeight: 800,
     marginBottom: 4,
   },
-  pointCode: {
+  point: {
     color: "#98aec9",
     fontWeight: 500,
   },
-  zoneGrid: {
+  linkButton: {
+    display: "inline-block",
+    marginTop: 8,
+    color: "#00d4ff",
+    textDecoration: "none",
+    fontSize: 12,
+  },
+  heatGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
     gap: 10,
   },
-  zoneCard: {
+  heatCell: {
     background: "#0b1020",
     border: "1px solid #1a2640",
     borderRadius: 8,
     padding: 12,
   },
-  zoneStatus: {
+  heatStatus: {
+    fontSize: 12,
     fontWeight: 900,
-    fontSize: 13,
-    whiteSpace: "nowrap",
   },
-  zoneStats: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 6,
+  heatPart: {
+    color: "#98aec9",
+    fontSize: 12,
+    marginTop: 6,
+  },
+  heatNums: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
     color: "#98aec9",
     fontSize: 12,
     margin: "10px 0",
@@ -1210,9 +1096,6 @@ const styles: Record<string, React.CSSProperties> = {
     height: "100%",
     borderRadius: 999,
   },
-  tableWrap: {
-    overflowX: "auto",
-  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
@@ -1224,64 +1107,36 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid #1a2640",
     padding: "9px 7px",
     fontWeight: 800,
-    whiteSpace: "nowrap",
   },
   td: {
     borderBottom: "1px solid #1a2640",
     padding: "9px 7px",
     color: "#c8d6e5",
-    whiteSpace: "nowrap",
   },
-  riskLevel: {
-    fontWeight: 900,
-  },
-  gapList: {
-    display: "grid",
-    gap: 10,
-  },
-  gapItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    background: "#0b1020",
-    border: "1px solid #1a2640",
-    borderRadius: 8,
-    padding: 12,
-  },
-  miniGrid: {
+  qualityGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
-    marginBottom: 12,
   },
-  miniStat: {
+  quality: {
     background: "#0b1020",
     border: "1px solid #1a2640",
     borderRadius: 8,
     padding: 12,
   },
-  miniValue: {
-    fontSize: 22,
-    color: "#00d4ff",
-    fontWeight: 900,
-  },
-  compactRow: {
-    display: "grid",
-    gridTemplateColumns: "1.1fr 1fr auto",
-    gap: 10,
-    alignItems: "center",
-    padding: "9px 0",
-    borderBottom: "1px solid #1a2640",
-  },
-  correlationItem: {
+  qualityTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 10,
+    marginBottom: 6,
+  },
+  notice: {
+    color: "#98aec9",
     background: "#0b1020",
-    border: "1px solid #1a2640",
+    border: "1px dashed #1a2640",
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+    padding: 16,
+    fontSize: 13,
   },
   empty: {
     color: "#5a6d8a",
@@ -1291,10 +1146,5 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 16,
     textAlign: "center",
     fontSize: 13,
-  },
-  footer: {
-    color: "#5a6d8a",
-    fontSize: 12,
-    padding: "10px 0 4px",
   },
 };

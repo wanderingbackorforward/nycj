@@ -25,8 +25,14 @@ export default function Area1PointAnalysis() {
     const res = await fetchGnMonitoringPoints();
     if (res.ok && res.data) {
       const pts = res.data.points || [];
+      const queryPoint = new URLSearchParams(window.location.search).get("point_code") || "";
+      const defaultPoint =
+        queryPoint && pts.some((p) => p.point_code === queryPoint)
+          ? queryPoint
+          : pts[0]?.point_code || "";
+
       setPoints(pts);
-      setSelectedPoint(pts[0]?.point_code || "");
+      setSelectedPoint(defaultPoint);
     } else setError("监测点列表获取失败");
     setLoading(false);
   }, []);
