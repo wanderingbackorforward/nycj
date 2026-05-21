@@ -5,16 +5,12 @@ import {
   fetchGnMonitoringPoints,
   fetchGnPointAnalysis,
   fetchGnDiagnose,
-  fetchGnTrendAcceleration,
-  fetchGnThresholdProximity,
 } from "../api/area1";
 
 import type {
   GnPoint,
   GnPointAnalysisResponse,
   GnDiagnoseResponse,
-  GnTrendAccelResponse,
-  GnThresholdProxResponse,
 } from "../api/area1";
 
 type AnyRecord = Record<string, any>;
@@ -205,13 +201,13 @@ function buildReviewView(params: {
   if (maxDaily != null) {
     const dayRatio = designLimit ? Math.abs(maxDaily / designLimit) : null;
     findings.push({
-      title: "单日变化",
+      title: "趋势状态",
       text:
         dayRatio != null
           ? `最大单日变化 ${fmtMaybeUnit(maxDaily, unit, 2)}，约为设计限值的 ${(
               dayRatio * 100
-            ).toFixed(0)}%。该变化幅度偏大时，应核对对应日期附近的原始记录。`
-          : `最大单日变化 ${fmtMaybeUnit(maxDaily, unit, 2)}。建议结合原始记录判断是否为真实突变。`,
+            ).toFixed(0)}%。如果该变化集中出现在少数日期，应优先核对对应日期附近的原始记录。`
+          : `最大单日变化 ${fmtMaybeUnit(maxDaily, unit, 2)}。建议结合原始记录判断是否为真实变化。`,
       tone: dayRatio != null && dayRatio >= 0.15 ? "warning" : "info",
     });
   }
@@ -270,8 +266,7 @@ export default function Area1PointAnalysis() {
   const [selectedPoint, setSelectedPoint] = useState("");
   const [analysis, setAnalysis] = useState<GnPointAnalysisResponse | null>(null);
   const [diagnosis, setDiagnosis] = useState<GnDiagnoseResponse | null>(null);
-  const [trendAccel, setTrendAccel] = useState<GnTrendAccelResponse | null>(null);
-  const [thresholdProx, setThresholdProx] = useState<GnThresholdProxResponse | null>(null);
+
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
   const loadPoints = useCallback(async () => {
@@ -307,8 +302,7 @@ export default function Area1PointAnalysis() {
     setAnalysisLoading(true);
     setAnalysis(null);
     setDiagnosis(null);
-    setTrendAccel(null);
-    setThresholdProx(null);
+
 
     const [analysisRes, diagRes] = await Promise.all([
       fetchGnPointAnalysis(code),
@@ -322,14 +316,6 @@ export default function Area1PointAnalysis() {
     if (diagRes.ok && diagRes.data) {
       setDiagnosis(diagRes.data);
     }
-
-    void fetchGnTrendAcceleration(code).then((r) => {
-      if (r.ok && r.data) setTrendAccel(r.data);
-    });
-
-    void fetchGnThresholdProximity(code).then((r) => {
-      if (r.ok && r.data) setThresholdProx(r.data);
-    });
 
     setAnalysisLoading(false);
   }, []);
@@ -592,28 +578,22 @@ export default function Area1PointAnalysis() {
         </Panel>
       </section>
 
-      <section style={styles.twoCol}>
-        <Panel title="辅助分析">
-          <AuxiliaryAnalysis
-            selectedPoint={selectedPoint}
-            trendAccel={trendAccel}
-            thresholdProx={thresholdProx}
-            unit={unit}
+      <Panel title="数据摘要">
+        <div style={styles.summaryGrid}>
+          <Summary label="最新当前值" value={fmtMaybeUnit(review.latestCurrent, unit, 2)} />
+          <Summary label="最新累计变化" value={fmtMaybeUnit(review.latestCumulative, unit, 2)} />
+          <Summary label="最新日变化" value={fmtMaybeUnit(review.latestDaily, unit, 2)} />
+          <Summary label="最大日变化" value={fmtMaybeUnit(review.maxDaily, unit, 2)} />
+          <Summary
+            label="跳变占比"
+            value={review.jumpShare != null ? `${(review.jumpShare * 100).toFixed(0)}%` : "-"}
           />
-        </Panel>
-
-        <Panel title="数据摘要">
-          <div style={styles.summaryGrid}>
-            <Summary label="最新当前值" value={fmtMaybeUnit(review.latestCurrent, unit, 2)} />
-            <Summary label="最新日变化" value={fmtMaybeUnit(review.latestDaily, unit, 2)} />
-            <Summary label="最大日变化" value={fmtMaybeUnit(review.maxDaily, unit, 2)} />
-            <Summary
-              label="跳变占比"
-              value={review.jumpShare != null ? `${(review.jumpShare * 100).toFixed(0)}%` : "-"}
-            />
-          </div>
-        </Panel>
-      </section>
+          <Summary
+            label="复核等级"
+            value={review.statusLabel}
+          />
+        </div>
+      </Panel>
 
       <details style={styles.details}>
         <summary style={styles.summaryTitle}>原始数据（最近 10 条）</summary>
@@ -672,58 +652,6 @@ export default function Area1PointAnalysis() {
           <Empty text="暂无关联证据" />
         )}
       </details>
-    </div>
-  );
-}
-
-function AuxiliaryAnalysis({
-  selectedPoint,
-  trendAccel,
-  thresholdProx,
-  unit,
-}: {
-  selectedPoint: string;
-  trendAccel: GnTrendAccelResponse | null;
-  thresholdProx: GnThresholdProxResponse | null;
-  unit: string;
-}) {
-  const accelRows = ((trendAccel as AnyRecord | null)?.items || []) as AnyRecord[];
-  const proxRows = ((thresholdProx as AnyRecord | null)?.items || []) as AnyRecord[];
-
-  const accel = accelRows.find((d) => d.point_code === selectedPoint);
-  const prox = proxRows.find((d) => d.point_code === selectedPoint);
-
-  if (!accel && !prox) {
-    return <Empty text="暂无辅助分析结果" />;
-  }
-
-  return (
-    <div style={styles.auxList}>
-      {prox && (
-        <div style={styles.auxItem}>
-          <div style={styles.auxTitle}>阈值逼近</div>
-          <div style={styles.muted}>
-            累计变化 {fmtMaybeUnit(prox.cumulative_change, unit, 2)} / 设计限值{" "}
-            {fmtMaybeUnit(prox.design_limit, unit, 2)}，
-            {Number(prox.proximity_ratio || 0) > 1
-              ? "已超过设计限值"
-              : Number(prox.proximity_ratio || 0) > 0.7
-                ? "接近设计限值"
-                : "暂未接近限值"}
-            。
-          </div>
-        </div>
-      )}
-
-      {accel && (
-        <div style={styles.auxItem}>
-          <div style={styles.auxTitle}>趋势加速度</div>
-          <div style={styles.muted}>
-            趋势方向：{accel.trend_direction || "-"}
-            {typeof accel.accel_val === "number" ? `，加速度 ${accel.accel_val.toFixed(2)} /日²` : ""}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
