@@ -1,303 +1,1164 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import * as echarts from "echarts";
-import StatusCard from "../components/cards/StatusCard";
-import LoadingState from "../components/status/LoadingState";
-import ErrorState from "../components/status/ErrorState";
-import { fetchGnOverview, fetchGnMonitoringItems, fetchGnAlerts, fetchGnHealth, fetchGnAnomalyDetection, fetchGnZoneHeatmap, fetchGnCrossCorrelation } from "../api/area1";
-import type { GnOverview, GnMonitoringItem, GnAlert, GnAnomalyResponse, GnZoneHeatmapResponse, GnCrossCorrelationResponse } from "../api/area1";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
+import {
+  fetchGnHealth,
+  fetchGnOverview,
+  fetchGnMonitoringItems,
+  fetchGnAlerts,
+  fetchGnDailyBriefing,
+  fetchGnEarlyWarning,
+  fetchGnAnomalyDetection,
+  fetchGnZoneHeatmap,
+  fetchGnCrossCorrelation,
+  fetchGnDataQualityTyped,
+  fetchGnDataGaps,
+  fetchGnManualReviews,
+  fetchGnPointsNeedingCoords,
+} from "../api/area1";
+
+import type {
+  GnOverview,
+  GnMonitoringItem,
+  GnAlert,
+  GnDailyBriefing,
+  GnEarlyWarningResponse,
+  GnEarlyWarningItem,
+  GnAnomalyResponse,
+  GnAnomalyItem,
+  GnZoneHeatmapResponse,
+  GnZoneHeatmapItem,
+  GnCrossCorrelationResponse,
+  GnDataQualityResponse,
+  GnDataGapsResponse,
+  GnDataGap,
+  GnManualReviewResponse,
+  GnPointsNeedingCoordsResponse,
+} from "../api/area1";
+
+const DEFAULT_DATE = "2026-04-14";
+
+type Priority = "高" | "中" | "低";
+
+type WarningRow = {
+  key: string;
+  priority: Priority;
+  source: string;
+  pointCode?: string;
+  item?: string;
+  side?: string;
+  part?: string;
+  value?: string;
+  action: string;
+};
+
+type DataQualityGapItem = NonNullable<GnDataQualityResponse["data_gaps"]>[number];
+
+type GapDisplayRow = {
+  key: string;
+  category: string;
+  description: string;
+  affectedCount?: number;
+  priority?: string;
+  impact?: string;
+  resolution?: string;
+  source: "data-quality" | "data-gaps";
+};
+
+function pickCard(overview: GnOverview | null, keywords: string[], fallback = 0): number {
+  const cards = overview?.cards ?? [];
+  const hit = cards.find((c) => keywords.some((k) => c.name?.includes(k)));
+  return hit?.value ?? fallback;
+}
+
+function formatNum(v: number | null | undefined, digits = 1): string {
+  if (typeof v !== "number" || Number.isNaN(v)) return "-";
+  return v.toFixed(digits);
+}
+
+function riskColor(level?: string): string {
+  const value = level ?? "";
+
+  if (["严重", "critical", "severe", "高"].some((x) => value.includes(x))) {
+    return "#ef4444";
+  }
+
+  if (["预警", "异常", "warning", "alarm"].some((x) => value.includes(x))) {
+    return "#f97316";
+  }
+
+  if (["关注", "中", "medium"].some((x) => value.includes(x))) {
+    return "#eab308";
+  }
+
+  if (["正常", "低", "normal", "ok"].some((x) => value.includes(x))) {
+    return "#22c55e";
+  }
+
+  return "#64748b";
+}
+
+function zoneScore(z: GnZoneHeatmapItem): number {
+  return (
+    (z.severe_count ?? 0) * 5 +
+    (z.exceed_count ?? 0) * 3 +
+    (z.avg_exceed_ratio ?? 0)
+  );
+}
+
+function itemRiskScore(i: GnMonitoringItem): number {
+  return (
+    (i.exceed_count ?? 0) * 3 +
+    (i.unknown_count ?? 0) +
+    (i.point_count ?? 0) * 0.05
+  );
+}
+
+function riskText(score: number): Priority {
+  if (score >= 80) return "高";
+  if (score >= 30) return "中";
+  return "低";
+}
+
+function normalizeQualityGap(g: DataQualityGapItem, index: number): GapDisplayRow {
+  return {
+    key: `quality-${index}-${g.category || "gap"}`,
+    category: g.category || "数据质量问题",
+    description: g.description || "-",
+    affectedCount: g.affected_count,
+    source: "data-quality",
+  };
+}
+
+function normalizeDataGap(g: GnDataGap, index: number): GapDisplayRow {
+  return {
+    key: `gap-${g.id || index}-${g.title || "gap"}`,
+    category: g.title || "数据缺口",
+    description: g.description || g.impact || "-",
+    priority: g.priority,
+    impact: g.impact,
+    resolution: g.resolution,
+    source: "data-gaps",
+  };
+}
+
+function warningFromWorsening(w: GnEarlyWarningItem): WarningRow {
+  return {
+    key: `worsening-${w.point_code || "unknown"}-${w.monitoring_item || "item"}`,
+    priority: "高",
+    source: "恶化加快",
+    pointCode: w.point_code,
+    item: w.monitoring_item,
+    side: w.side,
+    part: w.part,
+    value: `日变化 ${formatNum(w.daily_chg, 2)}`,
+    action: "纳入重点观察，必要时派单复核",
+  };
+}
+
+function warningFromApproaching(w: GnEarlyWarningItem): WarningRow {
+  const ratio = w.ratio ?? 0;
+
+  return {
+    key: `approaching-${w.point_code || "unknown"}-${w.monitoring_item || "item"}`,
+    priority: ratio >= 0.9 ? "高" : "中",
+    source: "逼近阈值",
+    pointCode: w.point_code,
+    item: w.monitoring_item,
+    side: w.side,
+    part: w.part,
+    value: `阈值比 ${formatNum(ratio * 100, 0)}%`,
+    action: "关注阈值逼近，优先核查趋势是否持续",
+  };
+}
+
+function warningFromAnomaly(a: GnAnomalyItem): WarningRow {
+  return {
+    key: `anomaly-${a.point_code || "unknown"}-${a.monitoring_item || "item"}`,
+    priority: Math.abs(a.z_score ?? 0) >= 4 ? "高" : "中",
+    source: "统计异常",
+    pointCode: a.point_code,
+    item: a.monitoring_item,
+    side: a.side,
+    part: a.part,
+    value: `Z=${formatNum(a.z_score, 1)}`,
+    action: "核查是否为真实异常或数据质量问题",
+  };
+}
+
+function warningFromAlert(a: GnAlert, index: number): WarningRow {
+  const ratio =
+    typeof a.exceed_ratio === "number"
+      ? a.exceed_ratio
+      : a.design_limit
+        ? Math.abs((a.cumulative_change ?? 0) / a.design_limit)
+        : 0;
+
+  return {
+    key: `alert-${index}-${a.point_code || "unknown"}-${a.monitoring_item || "item"}`,
+    priority: ratio >= 1.5 ? "高" : "中",
+    source: "超设计限值",
+    pointCode: a.point_code,
+    item: a.monitoring_item,
+    side: a.side,
+    part: a.part,
+    value: `超限 ${formatNum(ratio, 2)}x`,
+    action: "进入人工复核清单，确认是否形成报警",
+  };
+}
 
 export default function Area1Monitoring() {
-  const barRef = useRef<HTMLDivElement>(null);
-  const pieRef = useRef<HTMLDivElement>(null);
-  const exceedBarRef = useRef<HTMLDivElement>(null);
-  const reviewPieRef = useRef<HTMLDivElement>(null);
-  const barInst = useRef<echarts.ECharts | null>(null);
-  const pieInst = useRef<echarts.ECharts | null>(null);
-  const exceedInst = useRef<echarts.ECharts | null>(null);
-  const reviewInst = useRef<echarts.ECharts | null>(null);
-
+  const [date, setDate] = useState(DEFAULT_DATE);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [dbDown, setDbDown] = useState(false);
+
   const [overview, setOverview] = useState<GnOverview | null>(null);
+  const [briefing, setBriefing] = useState<GnDailyBriefing | null>(null);
+  const [earlyWarning, setEarlyWarning] = useState<GnEarlyWarningResponse | null>(null);
   const [items, setItems] = useState<GnMonitoringItem[]>([]);
   const [alerts, setAlerts] = useState<GnAlert[]>([]);
-  const [anomaly, setAnomaly] = useState<GnAnomalyResponse|null>(null);
-  const [heatmap, setHeatmap] = useState<GnZoneHeatmapResponse|null>(null);
-  const [crossCorr, setCrossCorr] = useState<GnCrossCorrelationResponse|null>(null);
+  const [anomaly, setAnomaly] = useState<GnAnomalyResponse | null>(null);
+  const [heatmap, setHeatmap] = useState<GnZoneHeatmapResponse | null>(null);
+  const [crossCorr, setCrossCorr] = useState<GnCrossCorrelationResponse | null>(null);
+  const [dataQuality, setDataQuality] = useState<GnDataQualityResponse | null>(null);
+  const [dataGaps, setDataGaps] = useState<GnDataGapsResponse | null>(null);
+  const [manualReviews, setManualReviews] = useState<GnManualReviewResponse | null>(null);
+  const [missingCoords, setMissingCoords] = useState<GnPointsNeedingCoordsResponse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [healthRes, ovrRes, itemsRes, alertsRes] = await Promise.all([
-      fetchGnHealth(), fetchGnOverview(), fetchGnMonitoringItems(), fetchGnAlerts(),
-    ]);
-    if (healthRes.ok) {
-      const h = healthRes.data!;
-      setDbDown(!h.ok || h.database !== "connected");
+    setError("");
+
+    try {
+      const [
+        healthRes,
+        overviewRes,
+        briefingRes,
+        earlyRes,
+        itemsRes,
+        alertsRes,
+        anomalyRes,
+        heatmapRes,
+        corrRes,
+        qualityRes,
+        gapsRes,
+        reviewsRes,
+        coordsRes,
+      ] = await Promise.all([
+        fetchGnHealth(),
+        fetchGnOverview(date),
+        fetchGnDailyBriefing(date),
+        fetchGnEarlyWarning(date),
+        fetchGnMonitoringItems(),
+        fetchGnAlerts({ date, limit: 100 }),
+        fetchGnAnomalyDetection(date),
+        fetchGnZoneHeatmap(date),
+        fetchGnCrossCorrelation(),
+        fetchGnDataQualityTyped(),
+        fetchGnDataGaps(),
+        fetchGnManualReviews(),
+        fetchGnPointsNeedingCoords(),
+      ]);
+
+      if (healthRes.ok && healthRes.data) {
+        setDbDown(!healthRes.data.ok || healthRes.data.database !== "connected");
+      }
+
+      if (overviewRes.ok) setOverview(overviewRes.data ?? null);
+      if (briefingRes.ok) setBriefing(briefingRes.data ?? null);
+      if (earlyRes.ok) setEarlyWarning(earlyRes.data ?? null);
+      if (itemsRes.ok) setItems(itemsRes.data?.items ?? []);
+      if (alertsRes.ok) setAlerts(alertsRes.data?.alerts ?? []);
+      if (anomalyRes.ok) setAnomaly(anomalyRes.data ?? null);
+      if (heatmapRes.ok) setHeatmap(heatmapRes.data ?? null);
+      if (corrRes.ok) setCrossCorr(corrRes.data ?? null);
+      if (qualityRes.ok) setDataQuality(qualityRes.data ?? null);
+      if (gapsRes.ok) setDataGaps(gapsRes.data ?? null);
+      if (reviewsRes.ok) setManualReviews(reviewsRes.data ?? null);
+      if (coordsRes.ok) setMissingCoords(coordsRes.data ?? null);
+    } catch {
+      setError("整体风险研判数据加载失败");
+    } finally {
+      setLoading(false);
     }
-    if (ovrRes.ok) setOverview(ovrRes.data!);
-    if (itemsRes.ok && itemsRes.data) setItems(itemsRes.data.items || []);
-    if (alertsRes.ok && alertsRes.data) setAlerts(alertsRes.data.alerts || []);
-    setLoading(false);
-    // 第二批：高级分析（非阻塞）
-    fetchGnAnomalyDetection().then(r => { if (r.ok) setAnomaly(r.data!); });
-    fetchGnZoneHeatmap().then(r => { if (r.ok) setHeatmap(r.data!); });
-    fetchGnCrossCorrelation().then(r => { if (r.ok) setCrossCorr(r.data!); });
-  }, []);
+  }, [date]);
 
-  useEffect(() => { load(); }, [load]);
-
-  // ---- 监测项目堆叠柱状图 ----
   useEffect(() => {
-    if (!barRef.current || items.length === 0) return;
-    if (!barInst.current) barInst.current = echarts.init(barRef.current);
-    const top = items.slice(0, 12);
-    barInst.current.setOption({
-      backgroundColor: "transparent",
-      tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { top: 0, textStyle: { color: "#98aec9", fontSize:12 } },
-      grid: { left: 50, right: 20, top: 30, bottom: 70 },
-      xAxis: { type: "category", data: top.map(i => (i.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 40 }, axisLine: { lineStyle: { color: "#1a2640" } } },
-      yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize: 11 }, splitLine: { lineStyle: { color: "#121e36" } } },
-      series: [
-        { name: "正常", type: "bar", data: top.map(i => i.normal_count || 0), stack: "total", itemStyle: { color: "#2e7d32" }, barWidth: 24 },
-        { name: "超限", type: "bar", data: top.map(i => i.exceed_count || 0), stack: "total", itemStyle: { color: "#e65100" } },
-        { name: "待确认", type: "bar", data: top.map(i => i.unknown_count || 0), stack: "total", itemStyle: { color: "#7a6a2a" } },
-      ],
-    }, true);
-    const h = () => barInst.current?.resize();
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
+    void load();
+  }, [load]);
+
+  const pointCount = pickCard(overview, ["监测点", "点数"]);
+  const readingCount = pickCard(overview, ["累计", "读数", "次数"]);
+  const exceedCount = pickCard(overview, ["超限", "超设计"]);
+  const unknownCount = pickCard(overview, ["待确认", "未知"]);
+
+  const warningRows = useMemo<WarningRow[]>(() => {
+    const rows: WarningRow[] = [];
+
+    for (const w of earlyWarning?.top_worsening ?? []) {
+      rows.push(warningFromWorsening(w));
+    }
+
+    for (const w of earlyWarning?.top_approaching ?? []) {
+      rows.push(warningFromApproaching(w));
+    }
+
+    for (const a of (anomaly?.items ?? []).filter((x) => x.is_anomaly)) {
+      rows.push(warningFromAnomaly(a));
+    }
+
+    alerts.slice(0, 30).forEach((a, index) => {
+      rows.push(warningFromAlert(a, index));
+    });
+
+    const uniq = new Map<string, WarningRow>();
+
+    for (const row of rows) {
+      const key = `${row.source}-${row.pointCode ?? "unknown"}-${row.item ?? "item"}`;
+      if (!uniq.has(key)) uniq.set(key, row);
+    }
+
+    return Array.from(uniq.values()).slice(0, 12);
+  }, [earlyWarning, anomaly, alerts]);
+
+  const zoneRows = useMemo(() => {
+    return [...(heatmap?.items ?? [])]
+      .sort((a, b) => zoneScore(b) - zoneScore(a))
+      .slice(0, 12);
+  }, [heatmap]);
+
+  const riskTypeRows = useMemo(() => {
+    return [...items]
+      .map((i) => ({
+        ...i,
+        riskScore: itemRiskScore(i),
+      }))
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 10);
   }, [items]);
 
-  // ---- 状态分布饼图 ----
-  useEffect(() => {
-    if (!pieRef.current || !overview?.status_distribution) return;
-    if (!pieInst.current) pieInst.current = echarts.init(pieRef.current);
-    const colors: Record<string, string> = { normal: "#2e7d32", exceed_design_limit: "#e65100", unknown: "#7a6a2a" };
-    pieInst.current.setOption({
-      backgroundColor: "transparent",
-      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize:12 } },
-      series: [{
-        type: "pie", radius: ["40%", "65%"], center: ["50%", "45%"],
-        data: overview.status_distribution.map(s => ({ name: s.status_display_cn || s.status_code, value: s.count, itemStyle: { color: colors[s.status_code] || "#5a6d8a" } })),
-        label: { color: "#98aec9", fontSize:12 },
-        itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 },
-      }],
-    }, true);
-    const h = () => pieInst.current?.resize();
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, [overview]);
+  const gapRows = useMemo<GapDisplayRow[]>(() => {
+    const qualityRows = (dataQuality?.data_gaps ?? []).map(normalizeQualityGap);
+    const dataGapRows = (dataGaps?.gaps ?? []).map(normalizeDataGap);
 
-  // ---- 超限Top10横向柱状图（替代文字表格）----
-  useEffect(() => {
-    if (!exceedBarRef.current) return;
-    const exceedAlerts = [...alerts].filter(a => a.exceed_ratio != null).sort((a,b) => (b.exceed_ratio||0) - (a.exceed_ratio||0)).slice(0, 10);
-    if (exceedAlerts.length === 0) return;
-    if (!exceedInst.current) exceedInst.current = echarts.init(exceedBarRef.current);
+    return [...qualityRows, ...dataGapRows].slice(0, 8);
+  }, [dataQuality, dataGaps]);
 
-    exceedInst.current.setOption({
-      backgroundColor: "transparent",
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 },
-        formatter: (p: { name: string; value: number; data: { designLimit: number; cumulative: number; current: number } }[]) => {
-          const d = p[0].data;
-          return p[0].name + "<br/>累计变化: " + (d.cumulative ?? "-") + " | 设计限值: " + (d.designLimit ?? "-") + "<br/>当前值: " + (d.current ?? "-");
-        }
-      },
-      grid: { left: 140, right: 80, top: 10, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12, formatter: "{value}x" }, splitLine: { lineStyle: { color: "#121e36" } }, name: "超限倍数", nameTextStyle: { color: "#5a6d8a", fontSize:12 } },
-      yAxis: {
-        type: "category",
-        data: exceedAlerts.map(a => (a.point_code || "") + " " + (a.monitoring_item || "").replace("竖向位移","竖向").replace("水平位移","水平")),
-        axisLabel: { color: "#98aec9", fontSize:12, width: 130, overflow: "truncate" },
-        axisLine: { lineStyle: { color: "#1a2640" } },
-      },
-      series: [{
-        type: "bar",
-        data: exceedAlerts.map(a => {
-          const ratio = (a.design_limit && a.design_limit !== 0) ? Math.abs((a.cumulative_change || 0) / a.design_limit) : 0;
-          return { value: Math.round(ratio * 10) / 10, designLimit: a.design_limit, cumulative: a.cumulative_change, current: a.current_value };
-        }),
-        barWidth: 18,
-        itemStyle: { borderRadius: [0, 3, 3, 0], color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{offset:0,color:"#e65100"},{offset:1,color:"#e65100"}]) },
-        label: { show: true, position: "right", color: "#e65100", fontSize:12, formatter: "{c}x" },
-        markLine: { silent: true, symbol: "none", data: [{ xAxis: 1, lineStyle: { color: "#5a4a2a", type: "dashed" }, label: { formatter: "设计限值", color: "#5a4a2a", fontSize:12 } }] },
-      }],
-    }, true);
-    const h = () => exceedInst.current?.resize();
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, [alerts]);
+  const criticalFindings = overview?.priority_findings ?? [];
+  const actions = overview?.actions ?? [];
+  const anomalyCount = anomaly?.items?.filter((x) => x.is_anomaly).length ?? 0;
+  const reviewedRecordCount = manualReviews?.reviews?.length ?? 0;
 
-  // ---- 复核级别分布环形图 ----
-  useEffect(() => {
-    if (!reviewPieRef.current || alerts.length === 0) return;
-    if (!reviewInst.current) reviewInst.current = echarts.init(reviewPieRef.current);
-    const reviewCounts: Record<string, number> = {};
-    for (const a of alerts) {
-      const lvl = a.review_level || "unspecified";
-      reviewCounts[lvl] = (reviewCounts[lvl] || 0) + 1;
-    }
-    const levelNames: Record<string, string> = { priority: "重点复核", routine: "常规复核", unspecified: "未指定", low: "低优先" };
-    const levelColors: Record<string, string> = { priority: "#e65100", routine: "#00d4ff", unspecified: "#5a6d8a", low: "#2e7d32" };
-    reviewInst.current.setOption({
-      backgroundColor: "transparent",
-      tooltip: { trigger: "item", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
-      legend: { bottom: 0, textStyle: { color: "#98aec9", fontSize:12 } },
-      series: [{
-        type: "pie", radius: ["45%", "70%"], center: ["50%", "45%"],
-        data: Object.entries(reviewCounts).map(([k, v]) => ({ name: levelNames[k] || k, value: v, itemStyle: { color: levelColors[k] || "#5a6d8a" } })),
-        label: { color: "#98aec9", fontSize:12 },
-        itemStyle: { borderColor: "#0a0e1a", borderWidth: 2 },
-      }],
-    }, true);
-    const h = () => reviewInst.current?.resize();
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, [alerts]);
-
-  // cleanup
-  useEffect(() => { return () => { barInst.current?.dispose(); pieInst.current?.dispose(); exceedInst.current?.dispose(); reviewInst.current?.dispose(); }; }, []);
-
-  if (loading) return <LoadingState message="正在加载1工区监测数据..." />;
-
-  const gnCards = overview?.cards || [];
-  const cardMap: Record<string, number> = {};
-  for (const c of gnCards) { cardMap[c.name] = c.value; }
-
-  const exceedAlerts = [...alerts].filter(a => a.exceed_ratio != null).sort((a,b) => (b.exceed_ratio||0) - (a.exceed_ratio||0));
-  const priorityFindings = overview?.priority_findings || [];
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.loading}>正在加载 1工区整体风险研判...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="page-area1-monitoring">
-      <h2 className="page-title">1工区基坑监测</h2>
-      <p className="page-desc">工农路站主体基坑施工监测，含地表、建筑物、管线、桩顶、支撑、地下水、深层水平位移。</p>
-      {dbDown && <div className="page-warning-banner" style={{background:"#2a0a0a",border:"1px solid #5a1a1a",color:"#d47070",padding:"8px 16px",borderRadius:4,marginBottom:12}}>{"⛔ 数据库连接异常。"}</div>}
+    <div style={styles.page}>
+      <header style={styles.header}>
+        <div>
+          <h1 style={styles.h1}>1工区整体风险研判</h1>
+          <p style={styles.subtitle}>
+            面向整体监测、分区预警、风险类型分布与数据质量闭环；单点趋势与证据链请进入单点分析页。
+          </p>
+        </div>
 
-      {/* ======== Row 1: 状态卡片 ======== */}
-      <section className="status-cards-row">
-        <div className="status-cards-group"><h3 className="group-title">监测概览</h3>
-          <div className="status-cards">
-            <StatusCard label="监测点数" value={cardMap["监测点数量"] ?? "-"} unit="个" />
-            <StatusCard label="累计读数" value={cardMap["读数数量"] ?? "-"} unit="条" />
-            <StatusCard label="超设计限值" value={cardMap["超设计限值"] ?? "-"} unit="条" highlight />
-            <StatusCard label="待确认" value={cardMap["待确认"] ?? "-"} unit="条" highlight />
+        <div style={styles.toolbar}>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={styles.input}
+          />
+
+          <button onClick={() => void load()} style={styles.button}>
+            刷新
+          </button>
+
+          <span style={{ ...styles.statusPill, borderColor: dbDown ? "#ef4444" : "#22c55e" }}>
+            {dbDown ? "数据库异常" : "系统正常"}
+          </span>
+        </div>
+      </header>
+
+      {error && <div style={styles.error}>{error}</div>}
+      {dbDown && <div style={styles.error}>数据库连接异常，当前研判结果可能不完整。</div>}
+
+      <section style={styles.heroGrid}>
+        <div style={styles.conclusionCard}>
+          <div style={styles.kicker}>当前整体状态</div>
+
+          <div
+            style={{
+              ...styles.level,
+              color: riskColor(overview?.overall_level_cn || overview?.overall_level),
+            }}
+          >
+            {overview?.overall_level_cn || overview?.overall_level || "未判定"}
           </div>
-        </div>
-      </section>
 
-      {/* ======== Row 2: 监测项目堆叠柱状图 + 状态饼图 ======== */}
-      <section style={{display:"flex", gap:16, marginBottom:16}}>
-        <div style={{flex:1.5, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>监测项目分布（堆叠柱状）</h4>
-          <div ref={barRef} style={{height:280}} />
-        </div>
-        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>状态分布</h4>
-          <div ref={pieRef} style={{height:280}} />
-        </div>
-      </section>
+          <div style={styles.headline}>
+            {overview?.headline || briefing?.recommendation || "暂无整体研判结论"}
+          </div>
 
-      {/* ======== Row 3: 超限横向柱状图 + 复核级别环形图 ======== */}
-      <section style={{display:"flex", gap:16, marginBottom:16}}>
-        <div style={{flex:1.5, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>超设计限值 Top10（横轴=超限倍数）</h4>
-          <p style={{color:"#5a6d8a", fontSize:11, marginBottom:4}}>虚线=设计限值线(1x)；悬停查看累计变化与当前值</p>
-          {exceedAlerts.length === 0 && <div style={{height:200, display:"flex", alignItems:"center", justifyContent:"center", color:"#5a6d8a"}}>暂无超设计限值数据</div>}
-          <div ref={exceedBarRef} style={{height: Math.max(200, exceedAlerts.slice(0,10).length * 32)}} />
-        </div>
-        <div style={{flex:1, background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-          <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>复核级别分布</h4>
-          <div ref={reviewPieRef} style={{height:240}} />
-        </div>
-      </section>
+          {briefing?.recommendation && (
+            <div style={styles.recommendation}>
+              <b>综合建议：</b>
+              {briefing.recommendation}
+            </div>
+          )}
 
-      {/* ======== Row 4: 重点发现（图表化卡片） ======== */}
-      {priorityFindings.length > 0 && (
-        <section style={{marginBottom:16}}>
-          <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:10}}>重点发现（{priorityFindings.length} 条）</h3>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
-            {priorityFindings.slice(0, 6).map((f, i) => (
-              <div key={i} style={{
-                background: f.level === "critical" ? "#2a0a0a" : "#0f1525",
-                border: "1px solid " + (f.level === "critical" ? "#5a1a1a" : "#1a2640"),
-                borderLeft: "4px solid " + (f.level === "critical" ? "#e65100" : "#00d4ff"),
-                borderRadius: 4, padding: "12px 14px",
-              }}>
-                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4}}>
-                  <span style={{
-                    fontSize:12, fontWeight:600, padding:"2px 6px", borderRadius:2, color:"#fff",
-                    background: f.level === "critical" ? "#e65100" : "#00d4ff",
-                  }}>{f.level === "critical" ? "! 重点" : "i 关注"}</span>
-                  <span style={{fontSize:12, color:"#5a6d8a"}}>#{i+1}</span>
+          {actions.length > 0 && (
+            <div style={styles.actionList}>
+              {actions.slice(0, 3).map((a, idx) => (
+                <div key={`${a.action}-${idx}`} style={styles.actionItem}>
+                  <span style={styles.actionPriority}>{a.priority || "建议"}</span>
+                  <span>{a.action}</span>
+                  {a.target && <span style={styles.muted}> / {a.target}</span>}
                 </div>
-                <div style={{fontSize:13, fontWeight:600, color:"#c8d6e5", marginBottom:3}}>{f.title}</div>
-                <div style={{fontSize:11, color:"#98aec9", lineHeight:1.5}}>{f.detail}</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={styles.metricGrid}>
+          <MetricCard title="超限计算值" value={exceedCount} unit="条" intent="danger" />
+          <MetricCard title="待确认事项" value={unknownCount} unit="条" intent="warning" />
+          <MetricCard title="监测点位" value={pointCount} unit="个" />
+          <MetricCard title="累计读数" value={readingCount} unit="条" />
+        </div>
+      </section>
+
+      <section style={styles.twoCol}>
+        <Panel
+          title="重点预警队列"
+          desc="跨全区汇总恶化、逼近阈值、统计异常与超设计限值，不展开单点详情。"
+        >
+          {warningRows.length === 0 ? (
+            <Empty text="暂无重点预警项" />
+          ) : (
+            <div style={styles.warningList}>
+              {warningRows.map((w) => (
+                <div key={w.key} style={styles.warningRow}>
+                  <div style={styles.warningTop}>
+                    <span
+                      style={{
+                        ...styles.priorityBadge,
+                        background: w.priority === "高" ? "#7f1d1d" : "#713f12",
+                      }}
+                    >
+                      {w.priority}优先级
+                    </span>
+
+                    <span style={styles.sourceBadge}>{w.source}</span>
+
+                    {w.value && <span style={styles.valueBadge}>{w.value}</span>}
+                  </div>
+
+                  <div style={styles.warningTitle}>
+                    {w.item || "未知监测项"}
+                    {w.side || w.part ? (
+                      <span style={styles.muted}> · {w.side || "-"} / {w.part || "-"}</span>
+                    ) : null}
+                  </div>
+
+                  <div style={styles.warningMeta}>
+                    {w.pointCode && (
+                      <a
+                        style={styles.link}
+                        href={`/md/nycj/area1-point-analysis?point_code=${encodeURIComponent(
+                          w.pointCode,
+                        )}`}
+                      >
+                        {w.pointCode}
+                      </a>
+                    )}
+
+                    <span>{w.action}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="待处理事项" desc="把“待确认”拆成可处理任务，避免用户只看到一个大数字。">
+          <div style={styles.todoGrid}>
+            <TodoItem label="待确认事项" value={unknownCount} desc="需要人工确认或系统补充条件后闭环" />
+
+            <TodoItem
+              label="已复核记录"
+              value={reviewedRecordCount}
+              desc="人工复核表中已有的处理记录"
+            />
+
+            <TodoItem
+              label="数据质量问题"
+              value={dataQuality?.data_gaps?.length ?? 0}
+              desc="阈值、证据、解析或状态原因待处理"
+            />
+
+            <TodoItem
+              label="数据缺口"
+              value={dataGaps?.summary?.total_gaps ?? dataGaps?.gaps?.length ?? 0}
+              desc="影响整体研判可信度"
+            />
+
+            <TodoItem
+              label="缺坐标测点"
+              value={missingCoords?.missing_coords ?? 0}
+              desc="影响分区热力与空间定位"
+            />
+          </div>
+        </Panel>
+      </section>
+
+      <Panel
+        title="分区风险热力"
+        desc="回答“风险集中在哪个区域”。按严重数、超限数与平均超限比综合排序。"
+      >
+        {zoneRows.length === 0 ? (
+          <Empty text="暂无分区热力数据" />
+        ) : (
+          <div style={styles.zoneGrid}>
+            {zoneRows.map((z, idx) => (
+              <div key={`${z.side || "side"}-${z.part || "part"}-${idx}`} style={styles.zoneCard}>
+                <div style={styles.zoneHeader}>
+                  <b>
+                    {z.side || "未知侧"} · {z.part || "未知部位"}
+                  </b>
+
+                  <span style={{ ...styles.zoneStatus, color: riskColor(z.zone_status) }}>
+                    {z.zone_status || "未判定"}
+                  </span>
+                </div>
+
+                <div style={styles.zoneStats}>
+                  <span>点位 {z.point_count ?? 0}</span>
+                  <span>读数 {z.reading_count ?? 0}</span>
+                  <span>超限 {z.exceed_count ?? 0}</span>
+                  <span>严重 {z.severe_count ?? 0}</span>
+                </div>
+
+                <div style={styles.barTrack}>
+                  <div
+                    style={{
+                      ...styles.barFill,
+                      width: `${Math.min(100, zoneScore(z) * 2)}%`,
+                      background: riskColor(z.zone_status),
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </Panel>
 
-      {/* ======== Row 5: 高级分析 ======== */}
-      {(anomaly || heatmap || crossCorr) && (
-        <section style={{display:"flex", gap:16, marginBottom:16, flexWrap:"wrap"}}>
-          {/* 异常检测 */}
-          {anomaly?.items && anomaly.items.length > 0 && (
-            <div style={{flex:"1 1 300px", background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-              <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>异常检测（{anomaly.sigma_threshold}σ）</h4>
-              <div style={{maxHeight:200, overflowY:"auto"}}>
-                {anomaly.items.filter(a => a.is_anomaly).slice(0, 8).map((a, i) => (
-                  <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:"1px solid #1a2640", fontSize:11}}>
-                    <span style={{color:"#c8d6e5"}}>{a.point_code}</span>
-                    <span style={{color:"#98aec9"}}>{a.monitoring_item}</span>
-                    <span style={{color:"#e65100", fontWeight:600}}>Z={a.z_score?.toFixed(1)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* 分区热力图 */}
-          {heatmap?.items && heatmap.items.length > 0 && (
-            <div style={{flex:"1 1 350px", background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-              <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>分区热力</h4>
-              <div style={{display:"flex", flexWrap:"wrap", gap:6}}>
-                {heatmap.items.slice(0, 12).map((z, i) => {
-                  const sev = z.zone_status === "严重" ? "#e65100" : z.zone_status === "异常" ? "#d4a050" : z.zone_status === "关注" ? "#1565c0" : "#2e7d32";
+      <Panel
+        title="风险类型分布"
+        desc="把原来的“监测项目分布”改成风险排行，按超限、待确认与点位规模综合排序。"
+      >
+        {riskTypeRows.length === 0 ? (
+          <Empty text="暂无监测项目数据" />
+        ) : (
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>监测类型</th>
+                  <th style={styles.th}>监测对象</th>
+                  <th style={styles.th}>点位</th>
+                  <th style={styles.th}>正常</th>
+                  <th style={styles.th}>超限</th>
+                  <th style={styles.th}>待确认</th>
+                  <th style={styles.th}>风险判断</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {riskTypeRows.map((i, idx) => {
+                  const risk = riskText(i.riskScore);
+
                   return (
-                    <div key={i} style={{background:"#111e30", border:"1px solid #1a2640", borderRadius:4, padding:"6px 10px", minWidth:100}}>
-                      <div style={{fontSize:11, color:"#c8d6e5"}}>{z.side}·{z.part}</div>
-                      <div style={{fontSize:12, color:"#5a6d8a"}}>超限{z.exceed_count} 复核{z.severe_count}</div>
-                      <span style={{fontSize:12, padding:"1px 5px", borderRadius:2, background:sev, color:"#fff", opacity:0.8}}>{z.zone_status}</span>
-                    </div>
+                    <tr key={`${i.monitoring_item || "item"}-${i.monitoring_object || "object"}-${idx}`}>
+                      <td style={styles.td}>{i.monitoring_item || "-"}</td>
+                      <td style={styles.td}>{i.monitoring_object || "-"}</td>
+                      <td style={styles.td}>{i.point_count ?? 0}</td>
+                      <td style={styles.td}>{i.normal_count ?? 0}</td>
+                      <td style={{ ...styles.td, color: "#fb923c" }}>{i.exceed_count ?? 0}</td>
+                      <td style={{ ...styles.td, color: "#facc15" }}>{i.unknown_count ?? 0}</td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.riskBadge, color: riskColor(risk) }}>{risk}</span>
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            </div>
-          )}
-          {/* 交叉相关 */}
-          {crossCorr?.correlations && crossCorr.correlations.length > 0 && (
-            <div style={{flex:"1 1 250px", background:"#0f1525", border:"1px solid #1a2640", borderRadius:6, padding:12}}>
-              <h4 style={{color:"#6a7d9e", fontSize:13, marginBottom:4}}>测项交叉相关</h4>
-              {crossCorr.correlations.slice(0, 4).map((c, i) => {
-                const clr = c.strength === "强" ? "#e65100" : c.strength === "中等" ? "#d4a050" : "#5a6d8a";
-                return (
-                  <div key={i} style={{fontSize:11, color:"#98aec9", padding:"3px 0", borderBottom:"1px solid #1a2640"}}>
-                    {c.item_a}↔{c.item_b} <span style={{color:clr, fontWeight:600}}>r={c.coefficient?.toFixed(2)}</span>
-                    <span style={{color:"#5a6d8a", fontSize:12, marginLeft:6}}>{c.strength}{c.direction}</span>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      <section style={styles.twoCol}>
+        <Panel title="数据质量与缺口" desc="解释待确认和不确定性：哪些是真风险，哪些是数据治理问题。">
+          {gapRows.map((g) => (
+            <div key={g.key} style={styles.gapItem}>
+              <div>
+                <b>{g.category}</b>
+                <div style={styles.muted}>{g.description}</div>
+
+                {(g.priority || g.resolution) && (
+                  <div style={styles.muted}>
+                    {g.priority ? `优先级：${g.priority}` : ""}
+                    {g.priority && g.resolution ? " / " : ""}
+                    {g.resolution ? `建议：${g.resolution}` : ""}
                   </div>
-                );
-              })}
+                )}
+              </div>
+
+              {g.affectedCount != null && (
+                <span style={styles.valueBadge}>{g.affectedCount} 项</span>
+              )}
             </div>
+          ))}
+
+          {gapRows.length === 0 && <Empty text="暂无数据质量缺口" />}
+        </Panel>
+
+        <Panel title="重点发现" desc="来自 overall 的优先发现，只保留整体结论，不展开单点诊断。">
+          {criticalFindings.length === 0 ? (
+            <Empty text="暂无重点发现" />
+          ) : (
+            criticalFindings.slice(0, 6).map((f, idx) => (
+              <div key={`${f.title}-${idx}`} style={styles.findingItem}>
+                <span
+                  style={{
+                    ...styles.priorityBadge,
+                    background: f.level === "critical" ? "#7f1d1d" : "#1e3a8a",
+                  }}
+                >
+                  {f.level === "critical" ? "重点" : "关注"}
+                </span>
+
+                <div>
+                  <b>{f.title}</b>
+                  <div style={styles.muted}>{f.detail}</div>
+                </div>
+              </div>
+            ))
           )}
-        </section>
-      )}
-      <div className="mon-status-note">
-        <strong>提示：</strong>DSW13 地下水位需人工复核。页面不将「超设计限值」称为「报警」——超限仅表示超过设计参考值，最终判定需结合现场工况。
+        </Panel>
+      </section>
+
+      <section style={styles.twoCol}>
+        <Panel title="统计异常概览" desc="只做整体异常概览；单点原因请跳转单点分析。">
+          <div style={styles.proGrid}>
+            <MetricMini label="异常点数量" value={anomalyCount} />
+            <MetricMini label="Sigma 阈值" value={anomaly?.sigma_threshold ?? "-"} />
+          </div>
+
+          {(anomaly?.items ?? [])
+            .filter((x) => x.is_anomaly)
+            .slice(0, 6)
+            .map((x, idx) => (
+              <div key={`${x.point_code || "point"}-${x.monitoring_item || "item"}-${idx}`} style={styles.compactRow}>
+                <span>{x.monitoring_item || "-"}</span>
+                <span style={styles.muted}>
+                  {x.side || "-"} / {x.part || "-"}
+                </span>
+                <span style={styles.valueBadge}>Z={formatNum(x.z_score, 1)}</span>
+              </div>
+            ))}
+
+          {anomalyCount === 0 && <Empty text="暂无统计异常点" />}
+        </Panel>
+
+        <Panel title="测项关联分析" desc="仅展示强/中等相关，用于提示系统性联动风险。">
+          {(crossCorr?.correlations ?? [])
+            .filter((c) => ["强", "中等"].includes(c.strength || ""))
+            .slice(0, 6)
+            .map((c, idx) => (
+              <div key={`${c.item_a || "a"}-${c.item_b || "b"}-${idx}`} style={styles.corrRow}>
+                <div>
+                  <b>
+                    {c.item_a || "-"} ↔ {c.item_b || "-"}
+                  </b>
+
+                  <div style={styles.muted}>
+                    {c.description || `${c.strength || ""}${c.direction || ""}相关`}
+                  </div>
+                </div>
+
+                <span style={styles.valueBadge}>r={formatNum(c.coefficient, 2)}</span>
+              </div>
+            ))}
+
+          {(crossCorr?.correlations ?? []).length === 0 && <Empty text="暂无相关性分析结果" />}
+        </Panel>
+      </section>
+
+      <footer style={styles.footer}>
+        当前页面定位：整体风险研判与预警。单点趋势、单点诊断、单点证据链统一跳转至「1工区单点分析」。
+      </footer>
+    </div>
+  );
+}
+
+function MetricCard({
+  title,
+  value,
+  unit,
+  intent,
+}: {
+  title: string;
+  value: number | string;
+  unit?: string;
+  intent?: "danger" | "warning";
+}) {
+  const color = intent === "danger" ? "#fb923c" : intent === "warning" ? "#facc15" : "#38bdf8";
+
+  return (
+    <div style={styles.metricCard}>
+      <div style={styles.metricTitle}>{title}</div>
+      <div style={{ ...styles.metricValue, color }}>
+        {value}
+        {unit && <span style={styles.metricUnit}> {unit}</span>}
       </div>
     </div>
   );
 }
+
+function MetricMini({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={styles.metricMini}>
+      <div style={styles.metricTitle}>{label}</div>
+      <div style={styles.metricMiniValue}>{value}</div>
+    </div>
+  );
+}
+
+function TodoItem({ label, value, desc }: { label: string; value: number | string; desc: string }) {
+  return (
+    <div style={styles.todoItem}>
+      <div style={styles.todoValue}>{value}</div>
+
+      <div>
+        <b>{label}</b>
+        <div style={styles.muted}>{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  desc,
+  children,
+}: {
+  title: string;
+  desc?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={styles.panel}>
+      <div style={styles.panelHeader}>
+        <h2 style={styles.h2}>{title}</h2>
+        {desc && <p style={styles.panelDesc}>{desc}</p>}
+      </div>
+
+      {children}
+    </section>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return <div style={styles.empty}>{text}</div>;
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    background: "#050816",
+    color: "#dbeafe",
+    padding: 24,
+    fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  h1: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 800,
+  },
+  subtitle: {
+    margin: "8px 0 0",
+    color: "#94a3b8",
+    fontSize: 14,
+  },
+  toolbar: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+  input: {
+    background: "#0f172a",
+    color: "#dbeafe",
+    border: "1px solid #1e293b",
+    borderRadius: 8,
+    padding: "8px 10px",
+  },
+  button: {
+    background: "#2563eb",
+    color: "#fff",
+    border: 0,
+    borderRadius: 8,
+    padding: "9px 14px",
+    cursor: "pointer",
+  },
+  statusPill: {
+    border: "1px solid",
+    borderRadius: 999,
+    padding: "7px 10px",
+    color: "#cbd5e1",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  error: {
+    background: "#450a0a",
+    border: "1px solid #7f1d1d",
+    color: "#fecaca",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  loading: {
+    padding: 40,
+    textAlign: "center",
+    color: "#93c5fd",
+  },
+  heroGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.4fr 1fr",
+    gap: 16,
+    marginBottom: 16,
+  },
+  conclusionCard: {
+    background: "linear-gradient(135deg, #0f172a, #111827)",
+    border: "1px solid #1e293b",
+    borderRadius: 16,
+    padding: 20,
+  },
+  kicker: {
+    color: "#93c5fd",
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  level: {
+    fontSize: 40,
+    fontWeight: 900,
+    marginBottom: 10,
+  },
+  headline: {
+    fontSize: 17,
+    lineHeight: 1.7,
+    color: "#e2e8f0",
+    marginBottom: 14,
+  },
+  recommendation: {
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+    lineHeight: 1.6,
+    color: "#cbd5e1",
+  },
+  actionList: {
+    marginTop: 14,
+    display: "grid",
+    gap: 8,
+  },
+  actionItem: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    color: "#cbd5e1",
+  },
+  actionPriority: {
+    background: "#1e3a8a",
+    color: "#bfdbfe",
+    borderRadius: 999,
+    padding: "3px 8px",
+    fontSize: 12,
+  },
+  metricGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+  metricCard: {
+    background: "#0f172a",
+    border: "1px solid #1e293b",
+    borderRadius: 16,
+    padding: 16,
+  },
+  metricTitle: {
+    color: "#94a3b8",
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  metricValue: {
+    fontSize: 30,
+    fontWeight: 800,
+  },
+  metricUnit: {
+    fontSize: 14,
+    color: "#94a3b8",
+    fontWeight: 500,
+  },
+  twoCol: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 16,
+    marginBottom: 16,
+  },
+  panel: {
+    background: "#0f172a",
+    border: "1px solid #1e293b",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  panelHeader: {
+    marginBottom: 14,
+  },
+  h2: {
+    margin: 0,
+    fontSize: 18,
+    fontWeight: 800,
+  },
+  panelDesc: {
+    margin: "6px 0 0",
+    color: "#94a3b8",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+  warningList: {
+    display: "grid",
+    gap: 10,
+  },
+  warningRow: {
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+  },
+  warningTop: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    marginBottom: 8,
+    flexWrap: "wrap",
+  },
+  priorityBadge: {
+    color: "#fff",
+    borderRadius: 999,
+    padding: "3px 8px",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  sourceBadge: {
+    background: "#1e293b",
+    color: "#cbd5e1",
+    borderRadius: 999,
+    padding: "3px 8px",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  valueBadge: {
+    background: "#172554",
+    color: "#bfdbfe",
+    borderRadius: 999,
+    padding: "3px 8px",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  warningTitle: {
+    fontWeight: 700,
+    marginBottom: 6,
+  },
+  warningMeta: {
+    display: "flex",
+    gap: 10,
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  link: {
+    color: "#38bdf8",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+  },
+  muted: {
+    color: "#94a3b8",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+  todoGrid: {
+    display: "grid",
+    gap: 10,
+  },
+  todoItem: {
+    display: "grid",
+    gridTemplateColumns: "72px 1fr",
+    gap: 12,
+    alignItems: "center",
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+  },
+  todoValue: {
+    fontSize: 24,
+    fontWeight: 900,
+    color: "#facc15",
+  },
+  zoneGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  },
+  zoneCard: {
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+  },
+  zoneHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 10,
+  },
+  zoneStatus: {
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  },
+  zoneStats: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 6,
+    color: "#94a3b8",
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  barTrack: {
+    height: 7,
+    background: "#1e293b",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  barFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  tableWrap: {
+    overflowX: "auto",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: 13,
+  },
+  th: {
+    textAlign: "left",
+    color: "#94a3b8",
+    borderBottom: "1px solid #1e293b",
+    padding: "10px 8px",
+    fontWeight: 600,
+  },
+  td: {
+    borderBottom: "1px solid #1e293b",
+    padding: "10px 8px",
+    color: "#dbeafe",
+  },
+  riskBadge: {
+    fontWeight: 800,
+  },
+  gapItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  findingItem: {
+    display: "grid",
+    gridTemplateColumns: "56px 1fr",
+    gap: 10,
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  proGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginBottom: 12,
+  },
+  metricMini: {
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+  },
+  metricMiniValue: {
+    fontSize: 22,
+    fontWeight: 900,
+    color: "#38bdf8",
+  },
+  compactRow: {
+    display: "grid",
+    gridTemplateColumns: "1.2fr 1fr auto",
+    gap: 10,
+    alignItems: "center",
+    padding: "9px 0",
+    borderBottom: "1px solid #1e293b",
+  },
+  corrRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    background: "#0b1220",
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  empty: {
+    color: "#64748b",
+    background: "#0b1220",
+    border: "1px dashed #334155",
+    borderRadius: 12,
+    padding: 16,
+    textAlign: "center",
+  },
+  footer: {
+    color: "#64748b",
+    fontSize: 13,
+    padding: "12px 0 4px",
+  },
+};

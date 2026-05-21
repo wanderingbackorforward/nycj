@@ -279,7 +279,7 @@ export default function Area1PointAnalysis() {
         <section style={{marginBottom:14}}>
           <h3 style={{color:"#6a7d9e", fontSize:14, marginBottom:6}}>数据缺口</h3>
           <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
-            {analysis.data_gaps.map((g, i) => (
+            {(analysis?.data_gaps ?? []).map((g, i) => (
               <div key={i} style={{background:"#1a1210", border:"1px solid #5a3a1a", borderRadius:4, padding:"6px 12px"}}>
                 <span style={{fontSize:12, color:"#d4a050", fontWeight:600}}>{g.category}</span>
                 <span style={{fontSize:12, color:"#8a6d5a", marginLeft:8}}>{g.description}</span>

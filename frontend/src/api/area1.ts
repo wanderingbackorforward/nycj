@@ -131,8 +131,21 @@ export function fetchGnMonitoringPoints(): Promise<ApiResult<GnPointsResponse>> 
   return apiGet(GN_API_BASE + '/monitoring/points?limit=1000');
 }
 
-export function fetchGnAlerts(): Promise<ApiResult<GnAlertsResponse>> {
-  return apiGet(GN_API_BASE + '/monitoring/alerts');
+export function fetchGnAlerts(params?: {
+  date?: string;
+  review_level?: string;
+  limit?: number;
+  cursor?: string;
+}): Promise<ApiResult<GnAlertsResponse>> {
+  const qs = new URLSearchParams();
+
+  if (params?.date) qs.set("date", params.date);
+  if (params?.review_level) qs.set("review_level", params.review_level);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.cursor) qs.set("cursor", params.cursor);
+
+  const query = qs.toString();
+  return apiGet(GN_API_BASE + "/monitoring/alerts" + (query ? "?" + query : ""));
 }
 
 export function fetchGnDataQuality(): Promise<ApiResult<unknown>> {

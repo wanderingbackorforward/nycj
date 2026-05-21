@@ -129,12 +129,12 @@ export default function Area2Overview() {
         tooltip: { trigger: "axis", backgroundColor: "rgba(15,21,37,0.95)", borderColor: "#1a2640", textStyle: { color: "#c8d6e5", fontSize: 12 } },
         legend: { top: 4, textStyle: { color: "#98aec9", fontSize:12 } },
         grid: { left: 50, right: 20, top: 30, bottom: 60 },
-        xAxis: { type: "category", data: items.map(i => i.monitoring_item || ""), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
+        xAxis: { type: "category", data: items.map(i => i.item || ""), axisLabel: { color: "#5a6d8a", fontSize:12, rotate: 35 }, axisLine: { lineStyle: { color: "#1a2640" } } },
         yAxis: { type: "value", axisLabel: { color: "#5a6d8a", fontSize:12 }, splitLine: { lineStyle: { color: "#121e36" } } },
         series: [
-          { name: "报警", type: "bar", stack: "total", data: items.map(i => i.alarm_cnt || 0), itemStyle: { color: "#e65100" }, barWidth: 20 },
-          { name: "预警", type: "bar", stack: "total", data: items.map(i => i.warning_cnt || 0), itemStyle: { color: "#d4a050" } },
-          { name: "正常", type: "bar", stack: "total", data: items.map(i => i.normal_cnt || 0), itemStyle: { color: "#2e7d32" } },
+          { name: "报警", type: "bar", stack: "total", data: items.map(i => i.alarm || 0), itemStyle: { color: "#e65100" }, barWidth: 20 },
+          { name: "预警", type: "bar", stack: "total", data: items.map(i => i.warning || 0), itemStyle: { color: "#d4a050" } },
+          { name: "正常", type: "bar", stack: "total", data: items.map(i => i.normal || 0), itemStyle: { color: "#2e7d32" } },
         ],
       }, true);
     } catch { /* silent */ }
@@ -344,7 +344,7 @@ export default function Area2Overview() {
         <section style={{ marginBottom: 0, background: "#0f1525", border: "1px solid #1a2640", borderRadius: 6, padding: 12 }}>
           <h4 style={{ color: "#6a7d9e", fontSize: 13, marginBottom: 6 }}>数据缺口</h4>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {overview.dataGaps.map((g, i) => {
+            {(overview?.dataGaps ?? []).map((g, i) => {
               const gRec = g as Record<string, unknown>;
               const field = String(gRec.field || gRec.category || "");
               const reason = String(gRec.reason || gRec.detail || "");
