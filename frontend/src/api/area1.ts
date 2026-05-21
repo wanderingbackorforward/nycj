@@ -396,8 +396,12 @@ export interface GnQuickRiskKpis {
 }
 
 export interface GnQuickRiskRecord {
+  priority_code?: string;
+  label_code?: string;
+  reason_code?: string;
   priority?: string;
   label?: string;
+  reason?: string;
   point_code?: string;
   monitoring_item?: string;
   monitoring_object?: string;
@@ -405,37 +409,39 @@ export interface GnQuickRiskRecord {
   part?: string;
   metric?: string;
   ratio?: number;
-  reason?: string;
 }
 
 export interface GnQuickRiskHeat {
+  level_code?: string;
+  level?: string;
   group?: string;
   side?: string;
   part?: string;
   suspected_exceed?: number;
   points?: number;
   max_ratio?: number;
-  level?: string;
 }
 
 export interface GnQuickRiskType {
+  level_code?: string;
+  level?: string;
   monitoring_item?: string;
   suspected_exceed?: number;
   points?: number;
   max_ratio?: number;
   representative_point?: string;
-  level?: string;
 }
 
 export interface GnQuickRiskNote {
+  note_code?: string;
   title?: string;
   status?: string;
   description?: string;
 }
 
 export interface GnQuickRiskResponse {
-  generated_at?: string;
-  date?: string;
+  state_code?: string;
+  // 保留旧字段
   state?: string;
   title?: string;
   reason?: string;
