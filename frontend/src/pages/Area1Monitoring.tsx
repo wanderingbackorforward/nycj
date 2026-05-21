@@ -77,14 +77,21 @@ function formatRatio(v?: number): string {
 }
 
 function toPriority(value?: string | number): Priority {
-  const s = String(value ?? "");
-  if (s.includes("高") || s.includes("严重")) return "高";
-  if (s.includes("中") || s.includes("关注") || s.includes("复核")) return "中";
   if (typeof value === "number") {
     if (value >= 1.5) return "高";
     if (value >= 1) return "中";
+    return "低";
   }
+
+  const s = String(value ?? "");
+  if (s.includes("高") || s.includes("严重") || s.includes("high")) return "高";
+  if (s.includes("中") || s.includes("关注") || s.includes("复核") || s.includes("medium")) return "中";
   return "低";
+}
+
+function isBadText(v?: string): boolean {
+  if (!v) return true;
+  return v.includes("?") || v.includes("�");
 }
 
 function priorityColor(p: Priority): string {
@@ -117,16 +124,19 @@ function alertRatio(a: GnAlert): number {
 function riskFromQuick(r: GnQuickRiskRecord, index: number): RiskRecord {
   const parsedRatio = parseFloat(String(r.metric || "0").replace("x", ""));
   const ratio = r.ratio ?? (Number.isNaN(parsedRatio) ? 0 : parsedRatio);
+
   return {
     key: `quick-${index}-${r.point_code || "unknown"}-${r.monitoring_item || "item"}`,
-    priority: toPriority(r.priority || ratio),
-    label: r.label || "疑似超限",
+    priority: toPriority(ratio),
+    label: isBadText(r.label) ? "疑似超限" : r.label || "疑似超限",
     pointCode: r.point_code,
     item: r.monitoring_item || "未知监测项",
     zone: zoneName(r.side, r.part, r.monitoring_object),
     metric: r.metric || formatRatio(ratio),
     ratio,
-    reason: r.reason || "需复核是否形成正式预警。",
+    reason: isBadText(r.reason)
+      ? "超过设计限值，需复核是否形成正式预警。"
+      : r.reason || "超过设计限值，需复核是否形成正式预警。",
   };
 }
 
@@ -146,14 +156,17 @@ function riskFromAlert(a: GnAlert, index: number): RiskRecord {
 }
 
 function heatFromQuick(h: GnQuickRiskHeat, index: number): HeatCell {
-  const level = toPriority(h.level || h.max_ratio || 0);
+  const count = h.suspected_exceed ?? 0;
+  const maxRatio = h.max_ratio ?? 0;
+  const level = toPriority(maxRatio || count);
+
   return {
-    key: `quick-heat-${index}-${h.group || "group"}`,
-    group: h.group || zoneName(h.side, h.part),
+    key: `quick-heat-${index}-${h.side || "side"}-${h.part || "part"}`,
+    group: zoneName(h.side, h.part),
     level,
-    count: h.suspected_exceed ?? 0,
+    count,
     points: h.points ?? 0,
-    maxRatio: h.max_ratio ?? 0,
+    maxRatio,
   };
 }
 
@@ -182,14 +195,16 @@ function aggregateHeat(records: RiskRecord[]): HeatCell[] {
 }
 
 function typeFromQuick(t: GnQuickRiskType, index: number): RiskTypeRow {
+  const maxRatio = t.max_ratio ?? 0;
+
   return {
     key: `quick-type-${index}-${t.monitoring_item || "item"}`,
     item: t.monitoring_item || "未知类型",
     count: t.suspected_exceed ?? 0,
     points: t.points ?? 0,
-    maxRatio: t.max_ratio ?? 0,
+    maxRatio,
     representativePoint: t.representative_point,
-    level: toPriority(t.level || t.max_ratio || 0),
+    level: toPriority(maxRatio),
   };
 }
 
@@ -221,12 +236,46 @@ function aggregateTypes(records: RiskRecord[]): RiskTypeRow[] {
     .slice(0, 8);
 }
 
+function buildStaticNotes(): DataNote[] {
+  return [
+    {
+      key: "view",
+      title: "研判口径",
+      status: "统一风险视图",
+      description: "当前页面基于 vw_risk_overview 汇总，不再混用多个接口口径。",
+    },
+    {
+      key: "threshold",
+      title: "阈值口径",
+      status: "设计限值",
+      description: "当前疑似超限主要基于设计限值，正式预警/报警阈值待补录。",
+    },
+    {
+      key: "space",
+      title: "空间口径",
+      status: "分组热力",
+      description: "测点坐标尚未补录，当前按侧别和部位做分组热力，不是真实空间热力图。",
+    },
+  ];
+}
+
 function noteFromQuick(n: GnQuickRiskNote, index: number): DataNote {
+  const fallback = buildStaticNotes()[index] || {
+    key: `note-${index}`,
+    title: "数据口径",
+    status: "说明",
+    description: "当前页面使用统一风险视图进行快速研判。",
+  };
+
+  if (isBadText(n.title) || isBadText(n.status) || isBadText(n.description)) {
+    return fallback;
+  }
+
   return {
     key: `quick-note-${index}-${n.title || "note"}`,
-    title: n.title || "数据口径",
-    status: n.status || "说明",
-    description: n.description || "-",
+    title: n.title || fallback.title,
+    status: n.status || fallback.status,
+    description: n.description || fallback.description,
   };
 }
 
@@ -263,18 +312,20 @@ function buildFallbackNotes(params: {
 }
 
 function buildTitle(quick: GnQuickRiskResponse | null, suspected: number, pending: number) {
-  if (quick?.title) return quick.title;
+  if (quick?.title && !isBadText(quick.title)) return quick.title;
   if (suspected > 0) return `今日有 ${suspected} 条疑似超限记录需要复核`;
   if (pending > 0) return `今日有 ${pending} 条数据需要确认`;
   return "今日未发现明显整体风险";
 }
 
 function buildReason(quick: GnQuickRiskResponse | null) {
-  return quick?.reason || "这些记录尚未等同于正式预警，需要确认是否真实超限或属于数据口径问题。";
+  if (quick?.reason && !isBadText(quick.reason)) return quick.reason;
+  return "当前研判基于统一风险视图；疑似超限尚不等同于正式报警，需要人工复核。";
 }
 
 function buildAction(quick: GnQuickRiskResponse | null) {
-  return quick?.action || "优先查看高倍数疑似超限点位，再处理缺失限值、缺坐标和无法自动判断的数据。";
+  if (quick?.action && !isBadText(quick.action)) return quick.action;
+  return "优先查看高倍数疑似超限点位，再处理待确认数据。";
 }
 
 export default function Area1Monitoring() {
@@ -359,7 +410,14 @@ export default function Area1Monitoring() {
   const pending = quick?.kpis?.pending_confirm ?? pickCard(overview, ["待确认", "未知"], 0);
   const pointCount = quick?.kpis?.monitoring_points ?? pickCard(overview, ["监测点", "点数"], 0);
   const readingCount = quick?.kpis?.readings ?? pickCard(overview, ["累计", "读数", "次数"], 0);
-  const state = quick?.state || (suspected > 0 ? "需复核" : pending > 0 ? "关注" : "正常");
+  const state =
+    quick?.state && !isBadText(quick.state)
+      ? quick.state
+      : suspected > 0
+        ? "需复核"
+        : pending > 0
+          ? "关注"
+          : "正常";
 
   if (loading) {
     return (
