@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query
 from ..services import analysis_service
 
 router = APIRouter(tags=["analysis"], prefix="/analysis")
@@ -67,3 +67,12 @@ async def daily_briefing(
 ):
     """每日工程研判简报：top恶化点+逼近限值点+分区摘要+一句话建议"""
     return await analysis_service.get_daily_briefing(date)
+
+
+@router.get("/quick-risk")
+async def quick_risk(
+    date: str = Query("", description="查询日期，如 2026-04-14，默认最新"),
+    limit: int = Query(8, ge=1, le=50, description="返回risk_records数量上限")
+):
+    """快速整体研判：当日风险概览 + top记录 + 分组热力 + 风险类型分布（面向前端一站式调用）"""
+    return await analysis_service.get_quick_risk(date, limit)

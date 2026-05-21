@@ -362,6 +362,8 @@ export interface GnZoneHeatmapResponse {
   items?: GnZoneHeatmapItem[];
   zones?: GnZoneHeatmapItem[];
   interpretation?: string;
+  /** @deprecated 兼容旧字段名 */
+  zone_summary?: GnZoneHeatmapItem[];
 }
 
 export function fetchGnDailyBriefing(date?: string): Promise<ApiResult<GnDailyBriefing>> {

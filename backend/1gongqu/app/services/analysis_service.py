@@ -1,4 +1,4 @@
-﻿"""
+"""
 高级分析与工程预判预警服务
 
 提供趋势分析、限值逼近、异常检测、跨项关联、预判预警、分区热力图、每日简报。
@@ -525,3 +525,225 @@ async def get_daily_briefing(date: str = ""):
     }
 
 
+
+# ============================================================
+# 8. 快速整体研判（面向前端）
+# ============================================================
+
+async def get_quick_risk(date: str = "", limit: int = 8):
+    """
+    面向前端的快速整体研判接口。
+    返回工区当日风险概览、top风险记录、分组热力、风险类型分布。
+    不做大规模数据清洗，不依赖坐标。
+    """
+    now = datetime.now().isoformat()
+
+    # ---- 确定日期 ----
+    if not date:
+        date = await db.fetch_val(
+            "SELECT max(measured_at::text) FROM gn_monitoring_reading WHERE reading_role IN ('analysis_primary', 'aggregate_summary')"
+        )
+    if not date:
+        return {"generated_at": now, "date": "", "state": "无数据", "title": "暂无监测数据",
+                "reason": "", "action": "", "kpis": {}, "risk_records": [], "group_heatmap": [], "risk_types": [], "data_notes": DATA_NOTES}
+
+    # ---- KPI 统计（与 daily_briefing 同口径：reading_role 过滤）----
+    total_points = await db.fetch_val(
+        "SELECT count(DISTINCT point_code) FROM gn_monitoring_reading"
+        " WHERE measured_at::text = %s AND reading_role IN ('analysis_primary', 'aggregate_summary')",
+        (date,)
+    ) or 0
+    total_readings = await db.fetch_val(
+        "SELECT count(*) FROM gn_monitoring_reading"
+        " WHERE measured_at::text = %s AND reading_role IN ('analysis_primary', 'aggregate_summary')",
+        (date,)
+    ) or 0
+    suspected_exceed = await db.fetch_val(
+        "SELECT count(*) FROM gn_monitoring_reading"
+        " WHERE measured_at::text = %s AND status_code = 'exceed_design_limit'",
+        (date,)
+    ) or 0
+    pending_confirm = await db.fetch_val(
+        "SELECT count(*) FROM gn_monitoring_reading"
+        " WHERE measured_at::text = %s AND status_code = 'unknown'",
+        (date,)
+    ) or 0
+
+    # ---- risk_records：从 v_gn_alert_review 取，与 /monitoring/alerts 同源 ----
+    alert_rows = await db.fetch(
+        "SELECT point_code, monitoring_item, monitoring_object, side, part,"
+        " ROUND(COALESCE(cumulative_change,0)::numeric,2) AS cumulative_change,"
+        " design_limit, exceed_ratio, review_level"
+        " FROM v_gn_alert_review"
+        " WHERE measured_at::text = %s"
+        " ORDER BY exceed_ratio DESC NULLS LAST, ABS(cumulative_change)/NULLIF(design_limit,0) DESC NULLS LAST"
+        " LIMIT %s",
+        (date, limit)
+    )
+
+    risk_records = []
+    for r in alert_rows:
+        ratio_val = float(r["exceed_ratio"]) if r["exceed_ratio"] is not None else None
+        if ratio_val is None:
+            dl = r.get("design_limit") or 0
+            cc = r.get("cumulative_change") or 0
+            ratio_val = round(abs(cc) / abs(dl), 2) if dl != 0 else None
+
+        rl = r.get("review_level") or ""
+        if ratio_val and ratio_val >= 3:
+            priority = "高"
+        elif rl == "重点复核" or (ratio_val and ratio_val >= 1):
+            priority = "中"
+        else:
+            priority = "低"
+
+        label = "疑似超限" if (ratio_val and ratio_val >= 1) else ("需关注" if ratio_val else "待确认")
+
+        reason_parts = []
+        if ratio_val and ratio_val >= 1:
+            reason_parts.append("超过设计限值")
+        if rl == "重点复核":
+            reason_parts.append("标记为重点复核")
+        if not reason_parts:
+            reason_parts.append("待确认状态")
+        reason = "，".join(reason_parts) + "，需复核是否形成正式预警"
+
+        risk_records.append({
+            "priority": priority,
+            "label": label,
+            "point_code": r["point_code"] or "",
+            "monitoring_item": r["monitoring_item"] or "",
+            "monitoring_object": r["monitoring_object"] or "",
+            "side": r["side"] or "",
+            "part": r["part"] or "",
+            "metric": f"{ratio_val:.2f}x" if ratio_val else "-",
+            "ratio": ratio_val,
+            "reason": reason,
+        })
+
+    # ---- risk_types：从 risk_records 聚合，按 monitoring_item 去重 ----
+    type_map = {}
+    for rr in risk_records:
+        mi = rr["monitoring_item"]
+        if mi not in type_map:
+            type_map[mi] = {
+                "monitoring_item": mi,
+                "suspected_exceed": 0,
+                "points": set(),
+                "max_ratio": 0,
+                "representative_point": rr["point_code"],
+                "level": "低",
+            }
+        type_map[mi]["suspected_exceed"] += 1
+        type_map[mi]["points"].add(rr["point_code"])
+        if rr["ratio"] and rr["ratio"] > type_map[mi]["max_ratio"]:
+            type_map[mi]["max_ratio"] = rr["ratio"]
+            type_map[mi]["representative_point"] = rr["point_code"]
+
+    risk_types = []
+    for mi, v in sorted(type_map.items(), key=lambda x: -x[1]["max_ratio"]):
+        max_r = v["max_ratio"]
+        v["level"] = "高" if max_r >= 3 else ("中" if max_r >= 1 else "低")
+        risk_types.append({
+            "monitoring_item": mi,
+            "suspected_exceed": v["suspected_exceed"],
+            "points": len(v["points"]),
+            "max_ratio": v["max_ratio"],
+            "representative_point": v["representative_point"],
+            "level": v["level"],
+        })
+
+    # ---- group_heatmap：从 risk_records 按 side + part 聚合 ----
+    def make_group(side, part):
+        s = (side or "").strip()
+        p = (part or "").strip()
+        if s and p:
+            return f"{s} · {p}"
+        return s or p or "未知"
+
+    heat_map = {}
+    for rr in risk_records:
+        g = make_group(rr["side"], rr["part"])
+        if g not in heat_map:
+            heat_map[g] = {
+                "group": g,
+                "side": rr["side"],
+                "part": rr["part"],
+                "suspected_exceed": 0,
+                "points": set(),
+                "max_ratio": 0,
+                "level": "低",
+            }
+        heat_map[g]["suspected_exceed"] += 1
+        heat_map[g]["points"].add(rr["point_code"])
+        if rr["ratio"] and rr["ratio"] > heat_map[g]["max_ratio"]:
+            heat_map[g]["max_ratio"] = rr["ratio"]
+
+    group_heatmap = []
+    for g, v in sorted(heat_map.items(), key=lambda x: -x[1]["suspected_exceed"]):
+        max_r = v["max_ratio"]
+        v["level"] = "高" if max_r >= 3 else ("中" if max_r >= 1 else "低")
+        group_heatmap.append({
+            "group": g,
+            "side": v["side"],
+            "part": v["part"],
+            "suspected_exceed": v["suspected_exceed"],
+            "points": len(v["points"]),
+            "max_ratio": v["max_ratio"],
+            "level": v["level"],
+        })
+
+    # ---- state / title / reason / action ----
+    if suspected_exceed > 10:
+        state = "需复核"
+        title = f"今日有 {suspected_exceed} 条疑似超限记录需要复核"
+    elif suspected_exceed > 0:
+        state = "需关注"
+        title = f"今日有 {suspected_exceed} 条疑似超限记录，整体可控"
+    elif pending_confirm > total_readings * 0.5:
+        state = "待确认"
+        title = f"今日 {pending_confirm} 条读数待确认，建议优先补齐限值"
+    else:
+        state = "正常"
+        title = "今日监测数据整体正常"
+
+    reason = "这些记录尚未等同于正式预警，需要确认是否真实超限或属于数据口径问题。"
+    action = "优先查看高倍数疑似超限点位，再处理无法自动判断的数据。"
+
+    return {
+        "generated_at": now,
+        "date": date,
+        "state": state,
+        "title": title,
+        "reason": reason,
+        "action": action,
+        "kpis": {
+            "suspected_exceed": suspected_exceed,
+            "pending_confirm": pending_confirm,
+            "monitoring_points": total_points,
+            "readings": total_readings,
+        },
+        "risk_records": risk_records,
+        "group_heatmap": group_heatmap,
+        "risk_types": risk_types,
+        "data_notes": DATA_NOTES,
+    }
+
+
+DATA_NOTES = [
+    {
+        "title": "阈值口径",
+        "status": "需说明",
+        "description": "当前主要按设计限值识别疑似超限，正式预警/报警阈值未完全配置。",
+    },
+    {
+        "title": "空间口径",
+        "status": "暂不完整",
+        "description": "测点坐标不完整，当前使用侧别和部位做分组热力，不作为真实空间热力图。",
+    },
+    {
+        "title": "复核口径",
+        "status": "需人工确认",
+        "description": "疑似超限不等于正式报警，需人工复核后闭环。",
+    },
+]
